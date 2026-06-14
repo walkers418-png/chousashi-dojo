@@ -14,14 +14,14 @@
   --radius: 14px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; }
+html { height: 100%; }
 body {
+  min-height: 100%;
   background: var(--bg);
   color: var(--text);
   font-family: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.7;
-  padding-bottom: calc(64px + env(safe-area-inset-bottom));
 }
 #appHeader {
   position: sticky; top: 0; z-index: 10;
@@ -33,7 +33,10 @@ body {
 #appHeader h1 { font-size: 17px; letter-spacing: .08em; }
 .streak { font-size: 13px; color: var(--warn); font-weight: 700; }
 
-main { padding: 14px 14px 24px; max-width: 720px; margin: 0 auto; }
+main {
+  padding: 14px 14px calc(88px + env(safe-area-inset-bottom));
+  max-width: 720px; margin: 0 auto;
+}
 
 #tabBar {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;

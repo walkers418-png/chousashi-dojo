@@ -199,7 +199,7 @@ const CalcGen = {
         solution: `<p>ΔX=${U.f3(dx)}, ΔY=${U.f3(dy)}（差は座標系に依らない）</p>
 <p>S=√(ΔX²+ΔY²)=<b>${U.f3(S)}m</b></p>
 <p>T=atan(ΔY/ΔX) を象限補正（ΔX${dx > 0 ? ">0" : "<0"}・ΔY${dy > 0 ? ">0" : "<0"} ⟹ 第${dx > 0 ? (dy > 0 ? "1" : "4") : dy > 0 ? "2" : "3"}象限）⟹ <b>${U.dmsStr(dms)}</b></p>
-<p class="muted small">複素数モード: (ΔX＋ΔYi) を極形式にすれば S∠T が一発。世界測地系でも「差ΔX,ΔY」で計算するので桁は気にしない。</p>`,
+<p class="muted small">電卓: <b>Pol(ΔX, ΔY)</b> ⟹ RCL X=距離・RCL Y=方向角 を一発（θが負なら＋360°）。複素数モードなら (ΔX＋ΔYi) を極形式。差で計算するので世界測地系でも桁は気にしない。</p>`,
       };
     },
   },
@@ -228,7 +228,7 @@ const CalcGen = {
         ],
         solution: `<p>X=X₀+S·cosT=${U.dispX(x0)}+${S.toFixed(3)}×cos${d}°${String(m).padStart(2, "0")}′=<b>${U.dispX(x)}</b></p>
 <p>Y=Y₀+S·sinT=${U.dispY(y0)}+${S.toFixed(3)}×sin${d}°${String(m).padStart(2, "0")}′=<b>${U.dispY(y)}</b></p>
-<p class="muted small">複素数モード: 起点 ＋ S∠T で一発。</p>`,
+<p class="muted small">電卓: <b>Rec(S, T)</b> ⟹ RCL X=ΔX・RCL Y=ΔY を起点に加算。複素数モードなら 起点＋S∠T。</p>`,
       };
     },
   },
@@ -643,7 +643,7 @@ const CalcGen = {
         ],
         solution: `<p>直線方向の単位ベクトル u＝(cosθ, sinθ)。射影長 <b>p＝(Q−A)·u</b>＝${proj.toFixed(3)} ⟹ F＝A＋p·u＝<b>(${U.dispX(F[0])}, ${U.dispY(F[1])})</b></p>
 <p>距離 QF＝|Q−F|＝<b>${U.f3(dist)}m</b></p>
-<p class="muted small">境界線からのオフセット・求積の高さ算出に使う。</p>`,
+<p class="muted small">電卓: <b>Pol(ΔX, ΔY)</b> で|AQ|と方位角を出し、直線方向角との差ψを作れば 射影＝|AQ|cosψ、離れ＝|AQ|sinψ。境界線からのオフセット・求積の高さ算出に使う。</p>`,
       };
     },
   },
@@ -776,7 +776,7 @@ const CalcGen = {
         ],
         solution: `<p>各測線を放射計算で加算: ΔX＝S·cosT、ΔY＝S·sinT。B′＝A＋Σ(ΔX, ΔY)＝<b>(${U.dispX(Bd[0])}, ${U.dispY(Bd[1])})</b></p>
 <p>閉合差 ΔX＝<b>${U.f3(dX)}</b>、ΔY＝<b>${U.f3(dY)}</b>、閉合距離＝${U.f3(Math.hypot(dX, dY))}m</p>
-<p class="muted small">この閉合差を各測線へ配分して座標補正する（→「閉合差の調整」種目）。</p>`,
+<p class="muted small">電卓: 各測線 <b>Rec(Sᵢ, Tᵢ)</b> でΔX,ΔYを出しM+で加算。この閉合差を各測線へ配分して座標補正する（→「閉合差の調整」種目）。</p>`,
       };
     },
   },
@@ -846,7 +846,7 @@ const CalcGen = {
         ],
         solution: `<p>各測点＝前点＋放射計算。P2＝P1＋第1測線＝<b>(${U.dispX(stations[1][0])}, ${U.dispY(stations[1][1])})</b></p>
 <p>一周後の到達点と出発点の差＝閉合差 ΔX＝<b>${U.f3(dX)}</b>、ΔY＝<b>${U.f3(dY)}</b>、閉合距離＝${U.f3(Math.hypot(dX, dY))}m</p>
-<p class="muted small">閉合比＝閉合距離÷全測線長。補正は均等/コンパス/トランシット法（→「閉合差の調整」）。</p>`,
+<p class="muted small">電卓: 各測線 <b>Rec(Sᵢ, Tᵢ)</b> で緯距経距を順次加算。閉合比＝閉合距離÷全測線長。補正は均等/コンパス/トランシット法（→「閉合差の調整」）。</p>`,
       };
     },
   },

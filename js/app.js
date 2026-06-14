@@ -379,7 +379,7 @@ function renderCalcMenu() {
   const d = Store.load();
   view.innerHTML =
     `<h2 style="font-size:15px;margin:4px">計算道場（無限自動生成）</h2>
-    <p class="muted small" style="margin:0 4px 10px">毎日30分。問題は無限に自動生成される。関数電卓（複素数モード推奨）を使って解くこと。</p>
+    <p class="muted small" style="margin:0 4px 10px">毎日30分。問題は無限に自動生成される。関数電卓の <b>Pol/Rec</b>（または複素数モード）を使って解くこと（→ガイド「関数電卓の必須機能」）。</p>
     <div class="card clickable" data-guide-open="1" style="border:1px solid var(--accent-deep)">
       <b style="color:var(--accent)">📚 計算手法ガイド</b>
       <div class="muted small">各計算を「複素数／関数電卓／手計算」の3通りで詳解（公式・図解つき）</div>
