@@ -1,0 +1,22 @@
+{
+  "name": "調査士道場 — 土地家屋調査士 合格アプリ",
+  "short_name": "調査士道場",
+  "description": "土地家屋調査士試験（午後の部）対策。講義・択一・測量計算・記述式を毎日学習。",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#101418",
+  "theme_color": "#101418",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
