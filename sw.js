@@ -1,5 +1,5 @@
 // オフライン対応 Service Worker
-const CACHE = "chousashi-dojo-v14";
+const CACHE = "chousashi-dojo-v15";
 const ASSETS = [
   "./",
   "./index.html",
@@ -16,6 +16,7 @@ const ASSETS = [
   "./js/data/calc-guide.js",
   "./js/data/importance.js",
   "./js/data/articles.js",
+  "./js/data/patterns.js",
 ];
 
 self.addEventListener("install", (e) => {

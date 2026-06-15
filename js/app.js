@@ -202,11 +202,114 @@ document.addEventListener("click", (e) => {
   if (a) showArticlePopup(a.dataset.art);
 });
 
+// ─────────── パターン図解（動く図解） ───────────
+function renderPatternList() {
+  view.innerHTML =
+    `<button class="back" id="backBtn">← 講義一覧へ</button>
+    <h2 style="font-size:15px;margin:4px">パターン図解（動く図解）</h2>
+    <p class="muted small" style="margin:0 4px 10px">答えがパターンで分かれる論点を、順番に動く図で確認。勘違いしやすい型は最後に大きな <span style="color:var(--ng);font-weight:700">✕</span> で警告。</p>` +
+    PATTERNS.map(
+      (
+        p,
+      ) => `<div class="card clickable" data-pat="${p.id}" style="padding:13px 14px">
+        <span class="tag">${esc(p.tag)}</span>
+        <div style="margin-top:4px"><b>${esc(p.title)}</b></div>
+        <div class="muted small">${esc(p.short || "")}</div>
+      </div>`,
+    ).join("");
+  document
+    .getElementById("backBtn")
+    .addEventListener("click", renderLectureList);
+  view
+    .querySelectorAll("[data-pat]")
+    .forEach((el) =>
+      el.addEventListener("click", () => renderPattern(el.dataset.pat)),
+    );
+}
+
+function renderPattern(id) {
+  const p = PATTERNS.find((x) => x.id === id);
+  if (!p) return renderPatternList();
+  const maxStep = p.steps.length - 1;
+  let step = 0;
+  let timer = null;
+  Store.touchToday();
+  updateStreak();
+  view.innerHTML = `
+    <button class="back" id="backBtn">← パターン図解一覧</button>
+    <div class="card">
+      <span class="tag">${esc(p.tag)}</span>
+      <h2 style="margin-top:6px">${esc(p.title)}</h2>
+      <div class="lecture-body">${p.intro}</div>
+      <div class="pat-stage">${p.scene}</div>
+      <div class="pat-progress"><div id="patBar"></div></div>
+      <div class="pat-narr" id="patNarr"></div>
+      <div class="btn-row">
+        <button class="btn secondary" id="patPrev">◀ 戻る</button>
+        <button class="btn" id="patNext">次へ ▶</button>
+      </div>
+      <button class="btn ghost" id="patAuto">▶ 自動再生</button>
+    </div>`;
+  const svg = view.querySelector(".pat-stage svg");
+  const narr = document.getElementById("patNarr");
+  const bar = document.getElementById("patBar");
+  const autoBtn = document.getElementById("patAuto");
+  function stop() {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+      autoBtn.textContent = "▶ 自動再生";
+    }
+  }
+  function draw() {
+    svg.querySelectorAll("[data-from]").forEach((el) => {
+      const from = +el.dataset.from;
+      const until = el.dataset.until !== undefined ? +el.dataset.until : 99;
+      el.style.transition = "opacity .45s";
+      el.style.opacity = step >= from && step <= until ? "1" : "0";
+    });
+    narr.innerHTML = `<span class="pat-step">手順 ${step + 1} / ${maxStep + 1}</span>${esc(p.steps[step])}`;
+    bar.style.width = (step / maxStep) * 100 + "%";
+    document.getElementById("patPrev").disabled = step === 0;
+    document.getElementById("patNext").disabled = step === maxStep;
+  }
+  document.getElementById("patNext").addEventListener("click", () => {
+    stop();
+    if (step < maxStep) step++;
+    draw();
+  });
+  document.getElementById("patPrev").addEventListener("click", () => {
+    stop();
+    if (step > 0) step--;
+    draw();
+  });
+  autoBtn.addEventListener("click", () => {
+    if (timer) return stop();
+    if (step === maxStep) step = 0;
+    autoBtn.textContent = "⏸ 停止";
+    draw();
+    timer = setInterval(() => {
+      if (step >= maxStep) return stop();
+      step++;
+      draw();
+    }, 2400);
+  });
+  document.getElementById("backBtn").addEventListener("click", () => {
+    stop();
+    renderPatternList();
+  });
+  draw();
+}
+
 function renderLectureList() {
   const cats = [...new Set(LECTURES.map((l) => l.cat))];
   view.innerHTML =
     `<h2 style="font-size:15px;margin:4px">講義ノート（全${LECTURES.length}ユニット）</h2>
-    <p class="muted small" style="margin:0 4px 12px">${impBadge(5)} は重要度（過去問ウェイト・★5が最優先）。本文中の<span class="artlink">青い条文</span>をタップすると全文が吹き出しで出ます。</p>` +
+    <p class="muted small" style="margin:0 4px 12px">${impBadge(5)} は重要度（過去問ウェイト・★5が最優先）。本文中の<span class="artlink">青い条文</span>をタップすると全文が吹き出しで出ます。</p>
+    <div class="card clickable" data-patopen="1" style="border:1px solid var(--accent-deep)">
+      <b style="color:var(--accent)">🎬 パターン図解（動く図解）</b>
+      <div class="muted small">取消し/解除/時効と登記・94条2項… 答えが分かれる論点をアニメで。勘違い型は大きな✕で警告</div>
+    </div>` +
     cats
       .map((cat) => {
         const items = LECTURES.filter((l) => l.cat === cat)
@@ -221,6 +324,9 @@ function renderLectureList() {
         return items;
       })
       .join("");
+  view
+    .querySelector("[data-patopen]")
+    .addEventListener("click", renderPatternList);
   view
     .querySelectorAll("[data-lec]")
     .forEach((el) =>
