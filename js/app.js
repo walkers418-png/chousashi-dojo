@@ -93,17 +93,128 @@ function renderToday() {
 }
 
 // ─────────── 講義 ───────────
+// ─────────── 重要度★ ───────────
+function impBadge(n) {
+  n = Math.max(1, Math.min(5, n || 3));
+  return `<span class="imp" title="重要度 ${n}/5">${"★".repeat(n)}<span class="imp-off">${"☆".repeat(5 - n)}</span></span>`;
+}
+
+// ─────────── 条文リンク（タップで全文ポップアップ） ───────────
+const LAW_ALIAS = {
+  民法: "民法",
+  不動産登記法: "不登法",
+  不登法: "不登法",
+  不動産登記規則: "規則",
+  規則: "規則",
+  準則: "準則",
+  登記準則: "準則",
+  建物の区分所有等に関する法律: "区分所有法",
+  区分所有法: "区分所有法",
+  土地家屋調査士法: "調査士法",
+  調査士法: "調査士法",
+  借地借家法: "借地借家法",
+};
+const ARTICLE_RE =
+  /(民法|不動産登記法|不登法|不動産登記規則|規則|登記準則|準則|建物の区分所有等に関する法律|区分所有法|土地家屋調査士法|調査士法|借地借家法)?\s*第?(\d+)条(?:の(\d+))?/g;
+
+// 択一カテゴリ・講義カテゴリ → 既定の法令（接頭辞のない「○条」をどの法令と解釈するか）
+function defLawForCat(cat) {
+  if (cat === "民法") return "民法";
+  if (cat === "調査士法") return "調査士法";
+  if (
+    ["総論", "土地", "建物", "区分建物", "筆界特定", "不登法総論"].includes(cat)
+  )
+    return "不登法";
+  return null;
+}
+
+function artKey(prefix, num, sub, defLaw) {
+  const code = prefix ? LAW_ALIAS[prefix] : defLaw;
+  if (!code) return null;
+  const key = code + num + (sub ? "の" + sub : "");
+  return typeof ARTICLES !== "undefined" && ARTICLES[key] ? key : null;
+}
+
+// 要素内のテキストノードを走査し、辞書にある条文参照だけをタップ可能spanに変換
+function linkArticlesInElement(root, defLaw) {
+  if (!root || typeof ARTICLES === "undefined") return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const targets = [];
+  let node;
+  while ((node = walker.nextNode())) {
+    if (node.parentElement && node.parentElement.closest(".artlink")) continue;
+    if (ARTICLE_RE.test(node.nodeValue)) targets.push(node);
+    ARTICLE_RE.lastIndex = 0;
+  }
+  for (const textNode of targets) {
+    const text = textNode.nodeValue;
+    const frag = document.createDocumentFragment();
+    let last = 0;
+    let m;
+    ARTICLE_RE.lastIndex = 0;
+    while ((m = ARTICLE_RE.exec(text))) {
+      const key = artKey(m[1], m[2], m[3], defLaw);
+      if (!key) continue;
+      if (m.index > last)
+        frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+      const span = document.createElement("span");
+      span.className = "artlink";
+      span.dataset.art = key;
+      span.textContent = m[0];
+      frag.appendChild(span);
+      last = m.index + m[0].length;
+    }
+    if (last > 0) {
+      if (last < text.length)
+        frag.appendChild(document.createTextNode(text.slice(last)));
+      textNode.parentNode.replaceChild(frag, textNode);
+    }
+  }
+}
+
+function showArticlePopup(key) {
+  const a = typeof ARTICLES !== "undefined" && ARTICLES[key];
+  if (!a) return;
+  let ov = document.getElementById("artOverlay");
+  if (!ov) {
+    ov = document.createElement("div");
+    ov.id = "artOverlay";
+    document.body.appendChild(ov);
+    ov.addEventListener("click", (e) => {
+      if (e.target === ov) ov.style.display = "none";
+    });
+  }
+  ov.innerHTML = `<div class="art-pop">
+      <div class="art-head"><b>${esc(a.law)}　${esc(a.no)}</b><button class="art-close" aria-label="閉じる">×</button></div>
+      <div class="art-pop-title">${esc(a.title)}</div>
+      <div class="art-pop-text">${esc(a.text).replace(/\n/g, "<br>")}</div>
+    </div>`;
+  ov.style.display = "flex";
+  ov.querySelector(".art-close").addEventListener(
+    "click",
+    () => (ov.style.display = "none"),
+  );
+}
+
+// 条文リンクのタップを一括処理（動的生成のため委譲）
+document.addEventListener("click", (e) => {
+  const a = e.target.closest && e.target.closest(".artlink");
+  if (a) showArticlePopup(a.dataset.art);
+});
+
 function renderLectureList() {
   const cats = [...new Set(LECTURES.map((l) => l.cat))];
   view.innerHTML =
-    `<h2 style="font-size:15px;margin:4px">講義ノート（全${LECTURES.length}ユニット）</h2>` +
+    `<h2 style="font-size:15px;margin:4px">講義ノート（全${LECTURES.length}ユニット）</h2>
+    <p class="muted small" style="margin:0 4px 12px">${impBadge(5)} は重要度（過去問ウェイト・★5が最優先）。本文中の<span class="artlink">青い条文</span>をタップすると全文が吹き出しで出ます。</p>` +
     cats
       .map((cat) => {
         const items = LECTURES.filter((l) => l.cat === cat)
           .map(
             (l) =>
               `<div class="card clickable" data-lec="${l.id}" style="padding:13px 14px">
-          <span class="tag">${esc(l.cat)}</span>${esc(l.title)}
+          <span class="tag">${esc(l.cat)}</span>${impBadge(LECTURE_IMP[l.id])}
+          <div style="margin-top:5px">${esc(l.title)}</div>
         </div>`,
           )
           .join("");
@@ -124,11 +235,15 @@ function renderLecture(id) {
   view.innerHTML = `
     <button class="back" id="backBtn">← 講義一覧へ</button>
     <div class="card">
-      <span class="tag">${esc(l.cat)}</span>
+      <span class="tag">${esc(l.cat)}</span>${impBadge(LECTURE_IMP[l.id])}
       <h2 style="margin-top:6px">${esc(l.title)}</h2>
       <div class="lecture-body">${l.body}</div>
       <button class="btn secondary" id="toQuiz">この分野の択一を解く →</button>
     </div>`;
+  linkArticlesInElement(
+    view.querySelector(".lecture-body"),
+    defLawForCat(l.cat),
+  );
   document
     .getElementById("backBtn")
     .addEventListener("click", renderLectureList);
@@ -148,7 +263,7 @@ function renderQuizMenu() {
     const tot = s.ok + s.ng;
     const rate = tot ? Math.round((s.ok / tot) * 100) + "%" : "—";
     return `<div class="card clickable" data-cat="${c}" style="display:flex;justify-content:space-between;align-items:center;padding:13px 14px">
-      <div>${esc(c)} <span class="muted small">(${s.total}問収録)</span></div>
+      <div>${esc(c)} <span class="muted small">(${s.total}問収録)</span><div style="margin-top:3px">${impBadge(CAT_IMP[c])}</div></div>
       <span class="tag ${tot && s.ok / tot >= 0.7 ? "ok" : tot ? "warn" : ""}">${rate}</span>
     </div>`;
   }).join("");
@@ -247,6 +362,10 @@ function renderFlashQuestion() {
       "var(--ok)";
     document.getElementById("explBox").innerHTML =
       `<div class="expl"><b>${ok ? "正解！" : "不正解"}</b> 答えは <b>${f.a ? "○" : "×"}</b><br>${f.expl}</div>`;
+    linkArticlesInElement(
+      document.getElementById("explBox"),
+      defLawForCat(f.cat),
+    );
     document.getElementById("nextBtn").style.display = "block";
   };
   document.getElementById("oxO").addEventListener("click", () => answer(true));
@@ -338,6 +457,10 @@ function renderQuizQuestion() {
       });
       document.getElementById("explBox").innerHTML =
         `<div class="expl"><b>${ok ? "正解！" : "不正解"}</b> 正答は ${q.answer + 1}。<br>${q.expl}</div>`;
+      linkArticlesInElement(
+        document.getElementById("explBox"),
+        defLawForCat(q.cat),
+      );
       document.getElementById("nextBtn").style.display = "block";
       updateStreak();
     });
@@ -485,6 +608,9 @@ function renderCalcGuide(id) {
   document
     .getElementById("backBtn")
     .addEventListener("click", renderCalcGuideList);
+  view
+    .querySelectorAll(".lecture-body, .formula")
+    .forEach((el) => linkArticlesInElement(el, null));
   if (g.figure) drawFigure(g.figure, true);
 }
 
