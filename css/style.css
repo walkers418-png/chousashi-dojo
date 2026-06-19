@@ -22,7 +22,18 @@ body {
   font-family: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.7;
+  overflow-x: hidden; /* はみ出し防止（保険） */
+  -webkit-text-size-adjust: 100%; /* iOSの自動文字拡大による崩れを防ぐ */
 }
+/* 長い語・数値・数式がはみ出さないよう折り返す（保険） */
+#view, .statement, .lecture-body, .expl, .art-pop-text, .stmt, .stmt span,
+.choice, .modetog, .reco, .se-prompt, td, th, .qhead, .ob-list li {
+  overflow-wrap: break-word;
+  word-break: break-word;
+  min-width: 0;
+}
+canvas.fig { max-width: 100%; height: auto; }
+.formula { overflow-x: auto; } /* 長い数式は溢れたら内部スクロール */
 #appHeader {
   position: sticky; top: 0; z-index: 10;
   display: flex; justify-content: space-between; align-items: center;
@@ -78,6 +89,15 @@ main {
 .btn-row { display: flex; gap: 8px; }
 .btn-row .btn { margin-top: 10px; }
 
+/* SRS（間隔反復）の自己評価ボタン */
+.grade-row { display: flex; gap: 8px; margin-top: 12px; }
+.grade-row .btn { margin-top: 0; flex: 1; padding: 11px 4px; font-size: 14px; line-height: 1.25; }
+.grade-row .btn small { display: block; margin-top: 3px; font-size: 11px; font-weight: 400; opacity: .85; }
+.grade-hard { background: var(--surface2); color: var(--ng); border: 1px solid var(--ng); }
+.grade-good { background: var(--surface2); color: var(--accent); border: 1px solid var(--accent-deep); }
+.grade-easy { background: var(--surface2); color: var(--ok); border: 1px solid var(--ok); }
+.srs-next { text-align: center; color: var(--muted); font-size: 12px; margin-top: 10px; }
+
 .choice {
   display: block; width: 100%; text-align: left;
   background: var(--surface2); color: var(--text);
@@ -89,6 +109,104 @@ main {
 .choice.correct { border-color: var(--ok); background: rgba(102,187,106,.12); }
 .choice.wrong { border-color: var(--ng); background: rgba(239,83,80,.12); }
 .choice:disabled { cursor: default; }
+
+/* 組み合わせ問題のア〜オ記述 */
+.stmts { margin: 4px 0 10px; }
+.stmt {
+  display: flex; gap: 9px; align-items: flex-start;
+  padding: 9px 11px; margin-top: 7px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; font-size: 13.5px; line-height: 1.65;
+}
+.stmt-mark {
+  flex: none; min-width: 22px; height: 22px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg); color: var(--accent); font-weight: 700; font-size: 12.5px;
+}
+
+/* 学習法モードのトグル */
+.modetog {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 10px 4px; cursor: pointer; border-top: 1px solid var(--border);
+}
+.modetog:first-of-type { border-top: none; }
+.modetog input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--accent-deep); flex: none; }
+
+/* 自信度の申告 */
+.conf-ask { font-size: 13.5px; margin: 10px 0 4px; }
+.conf-row { display: flex; gap: 8px; }
+.conf-row .btn { margin-top: 6px; flex: 1; }
+.conf-yes { background: var(--surface2); color: var(--ok); border: 1px solid var(--ok); }
+.conf-no { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+
+/* 自己説明の一拍 */
+.se-prompt {
+  margin: 12px 0 4px; padding: 11px 13px; font-size: 13.5px; line-height: 1.6;
+  background: rgba(79,195,247,.08); border: 1px dashed var(--accent-deep); border-radius: 10px;
+}
+
+/* 間違いノートのメモ・バックアップのテキスト欄 */
+.memo {
+  width: 100%; margin-top: 8px; padding: 9px 11px; box-sizing: border-box;
+  background: var(--surface2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 10px;
+  font-family: inherit; font-size: 13px; line-height: 1.6; resize: vertical; min-height: 48px;
+}
+.memo:focus { outline: none; border-color: var(--accent-deep); }
+details summary { cursor: pointer; padding: 2px 0; }
+
+/* 今日のおすすめ（動的アクション） */
+.reco {
+  display: flex; align-items: center; gap: 11px;
+  padding: 11px 4px; border-top: 1px solid var(--border); cursor: pointer;
+}
+.reco:first-of-type { border-top: none; margin-top: 6px; }
+.reco-ico { font-size: 20px; flex: none; }
+.reco-go { color: var(--muted); font-size: 13px; }
+.reco:active { background: var(--surface2); border-radius: 8px; }
+
+/* 読み上げボタン */
+.spk { background: none; border: none; cursor: pointer; font-size: 16px; padding: 0 2px; line-height: 1; }
+.spk:active { opacity: .5; }
+
+/* 音声プレイヤーバー（下タブの上に浮かぶ） */
+#playerBar {
+  position: fixed; left: 8px; right: 8px; bottom: 62px; z-index: 45;
+  display: none; align-items: center; gap: 6px;
+  background: var(--surface); border: 1px solid var(--accent-deep);
+  border-radius: 12px; padding: 6px 8px; box-shadow: 0 6px 22px rgba(0,0,0,.5);
+}
+#playerBar button {
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+  border-radius: 8px; min-width: 34px; height: 34px; font-size: 15px;
+  cursor: pointer; flex: none; padding: 0;
+}
+#playerBar button:disabled { opacity: .35; }
+#plLabel { flex: 1; min-width: 0; font-size: 11px; color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#plRate { font-weight: 700; color: var(--accent); }
+
+/* スワイプによるタブ切替のスライド演出 */
+@keyframes slideInL { from { transform: translateX(26px); opacity: .4; } to { transform: none; opacity: 1; } }
+@keyframes slideInR { from { transform: translateX(-26px); opacity: .4; } to { transform: none; opacity: 1; } }
+#view.slide-l { animation: slideInL .18s ease; }
+#view.slide-r { animation: slideInR .18s ease; }
+
+/* 初回ガイド（オンボーディング） */
+#obOverlay {
+  position: fixed; inset: 0; z-index: 60; display: flex;
+  align-items: center; justify-content: center;
+  background: rgba(0,0,0,.6); padding: 20px;
+}
+.ob-card {
+  background: var(--surface); border: 1px solid var(--accent-deep);
+  border-radius: 14px; max-width: 480px; width: 100%;
+  padding: 18px; max-height: 85vh; overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(0,0,0,.5);
+}
+.ob-card h2 { font-size: 18px; margin-bottom: 8px; }
+.ob-list { list-style: none; margin: 0 0 4px; }
+.ob-list li { padding: 9px 0; border-top: 1px solid var(--border); font-size: 13.5px; line-height: 1.65; }
+.ob-list li:first-child { border-top: none; }
 
 .expl {
   margin-top: 12px; padding: 12px 14px;
@@ -179,6 +297,13 @@ canvas.fig { width: 100%; background: #fff; border-radius: 10px; margin: 10px 0;
 .stat .l { font-size: 11px; color: var(--muted); }
 
 .timer { font-size: 22px; font-weight: 800; color: var(--warn); text-align: center; font-variant-numeric: tabular-nums; }
+/* フル模試の浮かぶタイマー（全フェーズ共通） */
+.mock-timer {
+  position: fixed; top: 52px; right: 10px; z-index: 40;
+  font-size: 15px; padding: 4px 10px; border-radius: 8px;
+  background: var(--surface); border: 1px solid var(--warn);
+  box-shadow: 0 4px 14px rgba(0,0,0,.4);
+}
 .qhead { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 .statement { white-space: pre-wrap; }
 .mono { font-variant-numeric: tabular-nums; }
@@ -212,7 +337,18 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
   border-radius: 8px; width: 30px; height: 30px; font-size: 18px; cursor: pointer; line-height: 1;
 }
 .art-pop-title { font-weight: 700; margin: 8px 0 6px; font-size: 13.5px; color: var(--text); }
-.art-pop-text { font-size: 13.5px; line-height: 1.85; color: var(--text); }
+.art-pop-text { font-size: 13.5px; line-height: 1.95; color: var(--text); }
+/* 条文の試験重要部分の強調（黄色マーカー風） */
+.art-pop-text .art-hl {
+  font-style: normal; font-weight: 700; color: #fff3c4;
+  background: linear-gradient(transparent 55%, rgba(255,183,77,.38) 55%);
+  padding: 0 1px; border-radius: 2px;
+}
+/* 条文中の注記（判例・趣旨など）を小さく添える */
+.art-pop-text .art-note {
+  display: block; margin-top: 6px; font-size: 12px; color: var(--muted);
+  border-left: 2px solid var(--accent-deep); padding-left: 8px;
+}
 
 /* パターン図解（動く図解） */
 .pat-stage { background: #0c1014; border: 1px solid var(--border); border-radius: 12px; padding: 6px; margin: 10px 0; }

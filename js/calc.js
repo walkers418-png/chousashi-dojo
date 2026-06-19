@@ -958,7 +958,7 @@ const CalcGen = {
 const CALC_GROUPS = [
   { label: "基礎計算", types: ["dist", "radiate"] },
   {
-    label: "交点計算（アイサン交点計算に対応）",
+    label: "交点計算",
     types: [
       "intersect",
       "intersect4",

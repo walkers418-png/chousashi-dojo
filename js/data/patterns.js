@@ -45,6 +45,52 @@ function _mark(x, y, type, from, until) {
     `<text x="${x}" y="${y}" text-anchor="middle" fill="${c}" font-size="72" font-weight="bold" opacity="0.92">${sym}</text>`,
   );
 }
+// ---- イラスト部品（建物・土地・人・登記簿）。手順と連動して出し入れする ----
+function _house(x, y, from, until, label, hi) {
+  const c = hi ? "#4fc3f7" : "#cfd8df";
+  const fill = hi ? "#10243a" : "#2b333b";
+  return _g(
+    from,
+    until,
+    `<polygon points="${x},${y} ${x + 27},${y - 22} ${x + 54},${y}" fill="${fill}" stroke="${c}" stroke-width="2"/>
+     <rect x="${x + 6}" y="${y}" width="42" height="36" fill="${fill}" stroke="${c}" stroke-width="2"/>
+     <rect x="${x + 21}" y="${y + 15}" width="13" height="21" fill="${c}"/>
+     <rect x="${x + 11}" y="${y + 6}" width="9" height="9" fill="none" stroke="${c}" stroke-width="1.5"/>
+     ${label ? `<text x="${x + 27}" y="${y + 51}" text-anchor="middle" fill="#e8edf2" font-size="11.5" font-weight="bold">${label}</text>` : ""}`,
+  );
+}
+function _land(x, y, w, from, until, label, color) {
+  color = color || "#66bb6a";
+  return _g(
+    from,
+    until,
+    `<rect x="${x}" y="${y}" width="${w}" height="20" rx="3" fill="#19241a" stroke="${color}" stroke-width="2"/>
+     <line x1="${x}" y1="${y + 20}" x2="${x + w}" y2="${y + 20}" stroke="${color}" stroke-width="3"/>
+     ${label ? `<text x="${x + w / 2}" y="${y + 14}" text-anchor="middle" fill="${color}" font-size="11" font-weight="bold">${label}</text>` : ""}`,
+  );
+}
+function _person(x, y, from, until, label, color) {
+  color = color || "#4fc3f7";
+  return _g(
+    from,
+    until,
+    `<circle cx="${x}" cy="${y}" r="8" fill="none" stroke="${color}" stroke-width="2"/>
+     <path d="M${x - 11},${y + 26} Q${x},${y + 9} ${x + 11},${y + 26}" fill="none" stroke="${color}" stroke-width="2"/>
+     ${label ? `<text x="${x}" y="${y + 40}" text-anchor="middle" fill="${color}" font-size="10.5" font-weight="bold">${label}</text>` : ""}`,
+  );
+}
+function _book(x, y, from, until, label) {
+  return _g(
+    from,
+    until,
+    `<rect x="${x}" y="${y}" width="34" height="42" rx="3" fill="#2b333b" stroke="#cfd8df" stroke-width="2"/>
+     <line x1="${x + 7}" y1="${y + 12}" x2="${x + 27}" y2="${y + 12}" stroke="#8fa0ae" stroke-width="2"/>
+     <line x1="${x + 7}" y1="${y + 21}" x2="${x + 27}" y2="${y + 21}" stroke="#8fa0ae" stroke-width="2"/>
+     <line x1="${x + 7}" y1="${y + 30}" x2="${x + 27}" y2="${y + 30}" stroke="#8fa0ae" stroke-width="2"/>
+     ${label ? `<text x="${x + 17}" y="${y + 56}" text-anchor="middle" fill="#e8edf2" font-size="10.5" font-weight="bold">${label}</text>` : ""}`,
+  );
+}
+
 function _svg(inner) {
   return `<svg viewBox="0 0 360 300" xmlns="http://www.w3.org/2000/svg" class="patsvg" preserveAspectRatio="xMidYMid meet">
     <defs><marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#8fa0ae"/></marker></defs>
@@ -448,59 +494,72 @@ const PATTERNS = [
     intro:
       "<p>土地に抵当権が設定され、競売で土地と建物の所有者が分かれたとき、建物のための<b>法定地上権</b>が成立するか。設定時の状態で決まる。</p>",
     scene: _svg(
-      _box(40, 36, "土地", "(抵当権)", 0, undefined, true) +
-        _box(208, 36, "建物", "設定時に存在", 0, 1) +
+      // 〈成立の型〉(手順0-1)：土地の上に建物、同一所有者
+      _note(
+        14,
+        30,
+        "〈成立の型〉設定時に建物あり・同一所有者",
+        0,
+        1,
+        "#66bb6a",
+      ) +
+        _land(34, 150, 150, 0, 1, "土地（抵当権）", "#4fc3f7") +
+        _house(70, 110, 0, 1, "建物", true) +
+        _person(252, 138, 0, 1, "同一所有者") +
+        _note(14, 196, "土地を競売 → 土地と建物の所有者が分離", 1, 1) +
         _note(
           14,
-          95,
-          "〈成立の型〉設定時に建物あり・土地建物が同一所有者",
-          0,
+          218,
+          "→ 法定地上権が成立（388条）・建物は存続",
+          1,
           1,
           "#66bb6a",
         ) +
-        _note(14, 135, "競売で土地と建物の所有者が分離", 1, 1) +
-        _note(14, 157, "→ 法定地上権が成立（388条）。建物は存続できる", 1, 1) +
-        _mark(300, 150, "o", 1, 1) +
-        _box(208, 36, "建物", "設定後に築造", 2, undefined) +
+        _mark(305, 130, "o", 1, 1) +
+        // 〈不成立の型〉(手順2-)：設定時は更地、後から建物
         _note(
           14,
-          95,
-          "〈不成立の型〉設定時は更地→設定後に建物を築造",
+          30,
+          "〈不成立の型〉設定時は更地（建物なし）に抵当",
           2,
           undefined,
           "#ffb74d",
         ) +
+        _land(34, 150, 150, 2, undefined, "更地 → のち土地", "#ffb74d") +
+        _house(70, 110, 2, undefined, "設定後に築造", false) +
         _note(
           14,
-          135,
+          196,
           "→ 法定地上権は成立しない（更地として評価済み）",
           3,
           undefined,
         ) +
+        _mark(305, 130, "x", 3, 4) +
         _note(
           14,
-          157,
-          "→ 一括競売は可（389条）。優先弁済は土地の代価のみ",
+          218,
+          "→ 一括競売は可（389条）・優先弁済は土地代価のみ",
           4,
           undefined,
         ) +
+        // ⚠ 勘違い (手順5)
         _note(
           14,
-          235,
-          "⚠ 勘違い：『更地に抵当後でも建物が建てば成立』",
+          244,
+          "⚠ 更地に抵当後でも建物が建てば成立 … は",
           5,
           undefined,
           "#ef5350",
         ) +
         _note(
           14,
-          255,
-          "　→ ✕ 更地抵当後の建物に法定地上権は成立しない",
+          266,
+          "　✕ 設定時に建物がなければ成立しない",
           5,
           undefined,
           "#ef5350",
         ) +
-        _mark(300, 235, "x", 5),
+        _mark(180, 150, "x", 5),
     ),
     steps: [
       "〈成立の型〉抵当権を設定した時点で、土地の上にすでに建物があり、土地と建物が同一の所有者だった。土地に抵当権を設定。",
@@ -815,13 +874,13 @@ const PATTERNS = [
     intro:
       "<p>甲地と乙地を<b>合筆</b>したい。41条の制限に1つでも当たると合筆できない。1つずつ確認しよう。</p>",
     scene: _svg(
-      _box(70, 32, "甲地", "", 0, undefined, true) +
-        _box(200, 32, "乙地", "", 0) +
-        _arrow(162, 55, 200, 55, "合筆?", 0) +
-        _note(8, 95, "次に当たると合筆できない（41条）：", 0) +
+      _land(34, 60, 130, 0, undefined, "甲地", "#4fc3f7") +
+        _land(196, 60, 130, 0, undefined, "乙地", "#66bb6a") +
+        _note(168, 56, "合筆?", 0, undefined, "#e8edf2") +
+        _note(8, 110, "次に1つでも当たると合筆できない（41条）：", 0) +
         _note(
           14,
-          122,
+          136,
           "✕ 互いに接続していない／地番区域・地目が異なる",
           1,
           undefined,
@@ -829,7 +888,7 @@ const PATTERNS = [
         ) +
         _note(
           14,
-          146,
+          160,
           "✕ 表題部所有者・所有権登記名義人・持分が異なる",
           2,
           undefined,
@@ -837,7 +896,7 @@ const PATTERNS = [
         ) +
         _note(
           14,
-          170,
+          184,
           "✕ 所有権の登記がある土地とない土地",
           3,
           undefined,
@@ -845,7 +904,7 @@ const PATTERNS = [
         ) +
         _note(
           14,
-          194,
+          208,
           "✕ 所有権以外の権利（抵当権等）の登記がある（原則）",
           4,
           undefined,
@@ -853,7 +912,7 @@ const PATTERNS = [
         ) +
         _note(
           14,
-          222,
+          232,
           "◯ 例外：登記原因・日付・受付番号が同一の担保権なら可",
           4,
           undefined,
@@ -861,7 +920,7 @@ const PATTERNS = [
         ) +
         _note(
           14,
-          258,
+          262,
           "⚠『抵当権付きは一切合筆不可』→ ✕（同一担保権は例外で可）",
           5,
           undefined,
