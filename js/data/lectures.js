@@ -19,6 +19,24 @@ const LECTURES = [
 <tr><td>270°〜360°</td><td>北西（第4象限）</td><td>＋</td><td>−</td></tr>
 </table>
 
+<svg viewBox="0 0 320 206" class="lecfig" role="img" aria-label="測量座標系の図">
+<line x1="28" y1="118" x2="298" y2="118" stroke="#5b6b78" stroke-width="1.5"/>
+<line x1="150" y1="198" x2="150" y2="18" stroke="#5b6b78" stroke-width="1.5"/>
+<polygon points="150,12 145,24 155,24" fill="#5b6b78"/>
+<polygon points="305,118 293,113 293,123" fill="#5b6b78"/>
+<text x="150" y="9" text-anchor="middle" fill="#4fc3f7" font-size="10.5" font-weight="bold">X＝北（＋）</text>
+<text x="296" y="110" text-anchor="end" fill="#4fc3f7" font-size="10.5" font-weight="bold">Y＝東（＋）</text>
+<text x="150" y="204" text-anchor="middle" fill="#8fa0ae" font-size="9.5">南（−）</text>
+<text x="24" y="113" text-anchor="end" fill="#8fa0ae" font-size="9.5">西（−）</text>
+<line x1="150" y1="118" x2="228" y2="50" stroke="#66bb6a" stroke-width="2.4"/>
+<circle cx="228" cy="50" r="3.6" fill="#66bb6a"/>
+<text x="234" y="48" fill="#66bb6a" font-size="10" font-weight="bold">新点</text>
+<text x="190" y="92" fill="#66bb6a" font-size="10">距離S</text>
+<path d="M150,76 A42,42 0 0,1 180,89" fill="none" stroke="#ffb74d" stroke-width="2"/>
+<text x="158" y="70" fill="#ffb74d" font-size="11" font-weight="bold">T</text>
+<text x="14" y="186" fill="#cfd8df" font-size="9">方向角Tは北（X＋）から時計回り。 ΔX＝S·cosT, ΔY＝S·sinT</text>
+</svg>
+
 <h4>2. 基本2公式 — これだけで試験計算の8割が動く</h4>
 <ul>
 <li><b>放射計算（順計算）</b>: 既知点(X₀,Y₀)・方向角T・距離S → 新点 X=X₀+S·cosT、Y=Y₀+S·sinT</li>
@@ -254,6 +272,25 @@ A: 120×(106−104)=240<br>P: 120×(114−100)=1680<br>Q: 100×(104−106)=−20
 <li><b>表題部所有者</b>: 所有権の登記が<b>ない</b>不動産についてのみ記録される所有者（2条10号）。所有権保存登記がされると<b>抹消</b>される。表題部所有者の記載は権利推定力・対抗力を持たないが、保存登記の申請適格（74条）の基礎になる。</li>
 </ul>
 
+<svg viewBox="0 0 340 198" class="lecfig" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="登記記録の構造図">
+<rect x="3" y="3" width="334" height="192" rx="8" fill="none" stroke="#4fc3f7" stroke-width="2"/>
+<text x="170" y="22" text-anchor="middle" fill="#4fc3f7" font-size="12.5" font-weight="bold">登記記録（1筆の土地・1個の建物ごと）</text>
+<rect x="16" y="34" width="308" height="50" rx="6" fill="#10243a" stroke="#66bb6a" stroke-width="2"/>
+<text x="26" y="54" fill="#66bb6a" font-size="12.5" font-weight="bold">表題部</text>
+<text x="26" y="71" fill="#cfd8df" font-size="10">表示に関する登記（物理的現況）</text>
+<text x="26" y="81" fill="#8fa0ae" font-size="9">所在・地番・地目・地積／種類・構造・床面積</text>
+<rect x="16" y="92" width="308" height="98" rx="6" fill="#1a2026" stroke="#ffb74d" stroke-width="2"/>
+<text x="26" y="110" fill="#ffb74d" font-size="12.5" font-weight="bold">権利部</text>
+<rect x="26" y="116" width="142" height="66" rx="5" fill="#232b33" stroke="#8fa0ae" stroke-width="1.5"/>
+<text x="97" y="136" text-anchor="middle" fill="#e8edf2" font-size="11.5" font-weight="bold">甲区</text>
+<text x="97" y="154" text-anchor="middle" fill="#8fa0ae" font-size="9.5">所有権に関する</text>
+<text x="97" y="170" text-anchor="middle" fill="#8fa0ae" font-size="9.5">事項（保存・移転等）</text>
+<rect x="174" y="116" width="150" height="66" rx="5" fill="#232b33" stroke="#8fa0ae" stroke-width="1.5"/>
+<text x="249" y="136" text-anchor="middle" fill="#e8edf2" font-size="11.5" font-weight="bold">乙区</text>
+<text x="249" y="154" text-anchor="middle" fill="#8fa0ae" font-size="9.5">所有権以外（抵当権・</text>
+<text x="249" y="170" text-anchor="middle" fill="#8fa0ae" font-size="9.5">地上権・賃借権等）</text>
+</svg>
+
 <h4>2. 登記できる権利（3条）— 暗記必須の限定列挙</h4>
 <p>所有権・地上権・永小作権・<b>地役権</b>・先取特権・質権・抵当権・賃借権・<b>配偶者居住権</b>・採石権の10個。<b>占有権・留置権・入会権・使用借権は登記できない</b>。</p>
 <div class="why">占有権・留置権は「占有」自体が公示として機能するから登記不要。入会権は慣習的・団体的権利で登記になじまない。——理由ごと覚えると忘れない。</div>
@@ -415,6 +452,26 @@ A: 120×(106−104)=240<br>P: 120×(114−100)=1680<br>Q: 100×(104−106)=−20
 <li><b>登録免許税</b>: 分筆後の筆数×<b>1,000円</b>。</li>
 </ul>
 
+<svg viewBox="0 0 330 184" class="lecfig" role="img" aria-label="分筆と合筆の図">
+<text x="14" y="18" fill="#4fc3f7" font-size="11.5" font-weight="bold">分筆（1筆 → 数筆に分ける・地積測量図が必要）</text>
+<rect x="20" y="26" width="80" height="46" rx="4" fill="#19241a" stroke="#66bb6a" stroke-width="2"/>
+<line x1="62" y1="26" x2="62" y2="72" stroke="#ef5350" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="48" y="53" text-anchor="middle" fill="#cfd8df" font-size="10">5番</text>
+<polygon points="150,49 132,43 132,55" fill="#8fa0ae"/><line x1="108" y1="49" x2="138" y2="49" stroke="#8fa0ae" stroke-width="2"/>
+<rect x="158" y="26" width="56" height="46" rx="4" fill="#19241a" stroke="#66bb6a" stroke-width="2"/>
+<text x="186" y="53" text-anchor="middle" fill="#cfd8df" font-size="10">5番1</text>
+<rect x="220" y="26" width="56" height="46" rx="4" fill="#19241a" stroke="#66bb6a" stroke-width="2"/>
+<text x="248" y="53" text-anchor="middle" fill="#cfd8df" font-size="10">5番2</text>
+<text x="14" y="104" fill="#ffb74d" font-size="11.5" font-weight="bold">合筆（数筆 → 1筆に・図面は不要）</text>
+<rect x="20" y="112" width="56" height="46" rx="4" fill="#19241a" stroke="#9fb0bd" stroke-width="2"/>
+<text x="48" y="139" text-anchor="middle" fill="#cfd8df" font-size="10">甲地</text>
+<rect x="80" y="112" width="56" height="46" rx="4" fill="#19241a" stroke="#9fb0bd" stroke-width="2"/>
+<text x="108" y="139" text-anchor="middle" fill="#cfd8df" font-size="10">乙地</text>
+<polygon points="178,135 160,129 160,141" fill="#8fa0ae"/><line x1="140" y1="135" x2="166" y2="135" stroke="#8fa0ae" stroke-width="2"/>
+<rect x="186" y="112" width="90" height="46" rx="4" fill="#19241a" stroke="#9fb0bd" stroke-width="2"/>
+<text x="231" y="139" text-anchor="middle" fill="#cfd8df" font-size="10">合筆後（若い地番）</text>
+</svg>
+
 <h4>2. 合筆の登記（41条）— 制限6類型＋例外3つ</h4>
 <p>合筆は数筆を1筆にする処分。権利関係が混ざるため、次の場合は<b>できない</b>。</p>
 <table class="simple">
@@ -507,6 +564,22 @@ A: 120×(106−104)=240<br>P: 120×(114−100)=1680<br>Q: 100×(104−106)=−20
 <li>取引性（独立して取引の対象となり得ること）を第4の要件として挙げる整理もある。</li>
 </ul>
 
+<svg viewBox="0 0 330 120" class="lecfig" role="img" aria-label="建物認定の3要件">
+<text x="165" y="18" text-anchor="middle" fill="#4fc3f7" font-size="12" font-weight="bold">建物の認定＝3要件すべて必要</text>
+<rect x="10" y="30" width="100" height="74" rx="8" fill="#10243a" stroke="#66bb6a" stroke-width="2"/>
+<text x="60" y="52" text-anchor="middle" fill="#66bb6a" font-size="12" font-weight="bold">外気分断性</text>
+<text x="60" y="72" text-anchor="middle" fill="#cfd8df" font-size="9.5">屋根と周壁</text>
+<text x="60" y="88" text-anchor="middle" fill="#cfd8df" font-size="9.5">で囲まれる</text>
+<rect x="115" y="30" width="100" height="74" rx="8" fill="#10243a" stroke="#66bb6a" stroke-width="2"/>
+<text x="165" y="52" text-anchor="middle" fill="#66bb6a" font-size="12" font-weight="bold">定着性</text>
+<text x="165" y="72" text-anchor="middle" fill="#cfd8df" font-size="9.5">土地に定着し</text>
+<text x="165" y="88" text-anchor="middle" fill="#cfd8df" font-size="9.5">継続使用できる</text>
+<rect x="220" y="30" width="100" height="74" rx="8" fill="#10243a" stroke="#66bb6a" stroke-width="2"/>
+<text x="270" y="52" text-anchor="middle" fill="#66bb6a" font-size="12" font-weight="bold">用途性</text>
+<text x="270" y="72" text-anchor="middle" fill="#cfd8df" font-size="9.5">目的とする用途</text>
+<text x="270" y="88" text-anchor="middle" fill="#cfd8df" font-size="9.5">に供しうる</text>
+</svg>
+
 <h4>2. 準則77条の具体例 — ○×を理由ごと暗記</h4>
 <table class="simple">
 <tr><th>○ 建物として扱う</th><th>理由・限定</th></tr>
@@ -556,6 +629,16 @@ A: 120×(106−104)=240<br>P: 120×(114−100)=1680<br>Q: 100×(104−106)=−20
 </ul>
 <div class="why">普通建物は1棟全体が取引単位だから外形基準（壁芯）でよい。区分建物の専有部分は「壁の内側の空間」だけが排他的支配の対象だから内法。区分所有法14条（共用部分の持分は内法床面積の割合）との整合でもある。</div>
 <div class="ex">壁芯10.00m×6.00m、壁厚0.20m（壁芯から内側へ各0.10m）の専有部分:<br>内法＝(10.00−0.20)×(6.00−0.20)＝9.80×5.80＝56.84㎡<br>壁芯で計算すると60.00㎡——記述式でこれを書いたら大減点。「区分」と見たら反射的に0.10×2を引く。</div>
+
+<svg viewBox="0 0 330 168" class="lecfig" role="img" aria-label="壁芯と内法の図">
+<text x="165" y="18" text-anchor="middle" fill="#4fc3f7" font-size="11.5" font-weight="bold">どの線で囲むかが種類で変わる</text>
+<rect x="95" y="34" width="150" height="92" fill="#2b333b" stroke="#5b6b78" stroke-width="11"/>
+<rect x="95" y="34" width="150" height="92" fill="none" stroke="#4fc3f7" stroke-width="1.6" stroke-dasharray="5 3"/>
+<rect x="106" y="45" width="128" height="70" fill="#19241a" stroke="#66bb6a" stroke-width="2"/>
+<text x="170" y="84" text-anchor="middle" fill="#cfd8df" font-size="10">壁の厚み</text>
+<text x="14" y="146" fill="#4fc3f7" font-size="10.5"><tspan font-weight="bold">━ ━ 壁芯</tspan>＝中心線（一般の建物）</text>
+<text x="14" y="162" fill="#66bb6a" font-size="10.5"><tspan font-weight="bold">━ 内法</tspan>＝内側線（区分建物の専有部分・狭い）</text>
+</svg>
 
 <h4>2. 床面積に算入する／しない（準則82条）— 完全リスト</h4>
 <table class="simple">
@@ -654,6 +737,22 @@ A: 120×(106−104)=240<br>P: 120×(114−100)=1680<br>Q: 100×(104−106)=−20
 <li><b>公正証書規約（32条）</b>: <b>最初に建物の専有部分の全部を所有する者</b>（分譲業者）だけが、分譲前に公正証書で規約共用部分・規約敷地等を設定できる。</li>
 </ul>
 
+<svg viewBox="0 0 330 196" class="lecfig" role="img" aria-label="区分建物の構造図">
+<rect x="10" y="8" width="310" height="120" rx="8" fill="none" stroke="#4fc3f7" stroke-width="2"/>
+<text x="165" y="24" text-anchor="middle" fill="#4fc3f7" font-size="11.5" font-weight="bold">一棟の建物</text>
+<rect x="24" y="34" width="130" height="40" rx="5" fill="#10243a" stroke="#66bb6a" stroke-width="1.8"/>
+<text x="89" y="51" text-anchor="middle" fill="#66bb6a" font-size="11" font-weight="bold">専有部分101</text>
+<text x="89" y="67" text-anchor="middle" fill="#8fa0ae" font-size="9">区分所有権・内法</text>
+<rect x="176" y="34" width="130" height="40" rx="5" fill="#10243a" stroke="#66bb6a" stroke-width="1.8"/>
+<text x="241" y="51" text-anchor="middle" fill="#66bb6a" font-size="11" font-weight="bold">専有部分102</text>
+<text x="241" y="67" text-anchor="middle" fill="#8fa0ae" font-size="9">区分所有権・内法</text>
+<rect x="24" y="82" width="282" height="34" rx="5" fill="#232b33" stroke="#ffb74d" stroke-width="1.8"/>
+<text x="165" y="103" text-anchor="middle" fill="#ffb74d" font-size="10.5" font-weight="bold">共用部分（廊下・階段室・外壁など）持分＝床面積割合</text>
+<rect x="10" y="140" width="310" height="46" rx="6" fill="#19241a" stroke="#9fb0bd" stroke-width="2"/>
+<text x="165" y="160" text-anchor="middle" fill="#cfd8df" font-size="11" font-weight="bold">敷地（土地）</text>
+<text x="165" y="177" text-anchor="middle" fill="#8fa0ae" font-size="9.5">敷地利用権が登記され分離処分禁止のもの＝敷地権（44条・46条）</text>
+</svg>
+
 <h4>2. 区分建物の表題登記（48条）— 一括申請主義</h4>
 <ul>
 <li>一棟の建物に属する区分建物の表題登記は、<b>一棟に属する区分建物の全部について同時に（一括して）</b>申請しなければならない。</li>
@@ -707,6 +806,24 @@ A: 120×(106−104)=240<br>P: 120×(114−100)=1680<br>Q: 100×(104−106)=−20
 <li><b>筆界特定（143条）</b>: 筆界特定登記官が筆界調査委員の意見を<b>踏まえて</b>、登記記録・地図・地積測量図等＋現地の状況を総合して筆界を特定し、<b>筆界特定書</b>を作成。図面で現地における位置を示す。</li>
 <li><b>事後処理（144条・149条）</b>: 対象土地の登記記録に<b>筆界特定がされた旨を記録</b>。筆界特定書等は<b>永久保存</b>され、<b>何人も</b>写しの交付を請求できる。</li>
 </ol>
+
+<svg viewBox="0 0 330 224" class="lecfig" role="img" aria-label="筆界特定の手続フロー">
+<rect x="25" y="8" width="280" height="28" rx="6" fill="#10243a" stroke="#4fc3f7" stroke-width="1.8"/>
+<text x="165" y="26" text-anchor="middle" fill="#e8edf2" font-size="10.5">① 申請（所有権登記名義人等／隣地の同意は不要・131条）</text>
+<polygon points="165,38 159,44 171,44" fill="#8fa0ae"/>
+<rect x="25" y="46" width="280" height="28" rx="6" fill="#232b33" stroke="#8fa0ae" stroke-width="1.5"/>
+<text x="165" y="64" text-anchor="middle" fill="#e8edf2" font-size="10.5">② 公告・通知 → 関係人が意見・資料を提出</text>
+<polygon points="165,76 159,82 171,82" fill="#8fa0ae"/>
+<rect x="25" y="84" width="280" height="28" rx="6" fill="#232b33" stroke="#8fa0ae" stroke-width="1.5"/>
+<text x="165" y="102" text-anchor="middle" fill="#e8edf2" font-size="10.5">③ 筆界調査委員が事実の調査・測量・意見提出</text>
+<polygon points="165,114 159,120 171,120" fill="#8fa0ae"/>
+<rect x="25" y="122" width="280" height="28" rx="6" fill="#10243a" stroke="#66bb6a" stroke-width="1.8"/>
+<text x="165" y="140" text-anchor="middle" fill="#66bb6a" font-size="10.5" font-weight="bold">④ 筆界特定登記官が意見を踏まえ筆界を特定（142条）</text>
+<polygon points="165,152 159,158 171,158" fill="#8fa0ae"/>
+<rect x="25" y="160" width="280" height="28" rx="6" fill="#232b33" stroke="#8fa0ae" stroke-width="1.5"/>
+<text x="165" y="178" text-anchor="middle" fill="#e8edf2" font-size="10.5">⑤ 筆界特定書を作成・登記記録に記録（143条・149条）</text>
+<text x="165" y="208" text-anchor="middle" fill="#ffb74d" font-size="9.5">不服があれば筆界確定訴訟へ。確定判決が優先（148条）</text>
+</svg>
 
 <h4>3. 費用と効力</h4>
 <ul>

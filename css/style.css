@@ -33,6 +33,8 @@ body {
   min-width: 0;
 }
 canvas.fig { max-width: 100%; height: auto; }
+/* 講義内のSVG図解 */
+.lecfig { display: block; width: 100%; max-width: 360px; margin: 12px auto; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; }
 .formula { overflow-x: auto; } /* 長い数式は溢れたら内部スクロール */
 #appHeader {
   position: sticky; top: 0; z-index: 10;

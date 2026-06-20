@@ -196,6 +196,8 @@ function linkArticlesInElement(root, defLaw) {
   let node;
   while ((node = walker.nextNode())) {
     if (node.parentElement && node.parentElement.closest(".artlink")) continue;
+    // SVG図解内のテキストは条文リンク化しない（spanを入れると壊れて文字が消える）
+    if (node.parentElement && node.parentElement.closest("svg")) continue;
     if (ARTICLE_RE.test(node.nodeValue)) targets.push(node);
     ARTICLE_RE.lastIndex = 0;
   }
