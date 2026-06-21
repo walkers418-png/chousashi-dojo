@@ -49,6 +49,13 @@ function renderToday() {
   const phaseIdx = SCHEDULE.phases.indexOf(phase);
   const pct = Math.round((phaseIdx / (SCHEDULE.phases.length - 1)) * 100);
 
+  // 今日の目標（解答数）。目標は設定（進捗タブ）で変更可・既定20問。
+  const dailyGoal = Number(localStorage.getItem("dailyGoal")) || 20;
+  const todayRec = Store.load().daily[today] || { ok: 0, ng: 0 };
+  const todayCount = todayRec.ok + todayRec.ng;
+  const goalPct = Math.min(100, Math.round((todayCount / dailyGoal) * 100));
+  const goalDone = todayCount >= dailyGoal;
+
   const upcoming = SCHEDULE.milestones
     .filter((m) => m.date >= today)
     .slice(0, 3)
@@ -114,6 +121,13 @@ function renderToday() {
       <div class="progressbar"><div style="width:${pct}%"></div></div>
       <div class="kicker" style="margin-top:8px">${esc(phase.name)}（${phase.from} 〜 ${phase.to}）</div>
       <p class="small">${esc(phase.goal)}</p>
+    </div>
+    <div class="card" style="padding:13px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <b>📅 今日の目標</b>
+        <span class="${goalDone ? "ok-text" : "muted"}" style="font-size:13px">${todayCount} / ${dailyGoal}問${goalDone ? " 達成 🎉" : ""}</span>
+      </div>
+      <div class="progressbar" style="margin-top:6px"><div style="width:${goalPct}%"></div></div>
     </div>
     ${recoCard}
     <h2 style="font-size:15px;margin:14px 4px 8px">今日のメニュー</h2>
@@ -2243,6 +2257,10 @@ function renderProgress() {
   const confTot = calib.co + calib.cx;
   const calibPct = confTot ? Math.round((calib.co / confTot) * 100) : null;
   const mistakeCount = Store.mistakeItems().length;
+  // 表示設定
+  const fz = localStorage.getItem("fontScale") || "m";
+  const theme = localStorage.getItem("theme") || "dark";
+  const dailyGoal = Number(localStorage.getItem("dailyGoal")) || 20;
   // 学習推移（直近14日）
   const series = Store.dailySeries(14);
   const seriesTotal = series.reduce((a, s) => a + s.ok + s.ng, 0);
@@ -2348,6 +2366,30 @@ function renderProgress() {
       <button class="btn" id="notebookBtn">${mistakeCount ? "間違いノートを開く" : "間違いノート（まだ空）"}</button>
     </div>
     <div class="card">
+      <h2>⚙️ 表示設定</h2>
+      <div class="set-row">
+        <span>テーマ</span>
+        <div class="seg" id="themeSeg">
+          <button data-theme="dark" class="${theme === "dark" ? "active" : ""}">🌙 ダーク</button>
+          <button data-theme="light" class="${theme === "light" ? "active" : ""}">☀️ ライト</button>
+        </div>
+      </div>
+      <div class="set-row">
+        <span>文字サイズ</span>
+        <div class="seg" id="fzSeg">
+          <button data-fz="s" class="${fz === "s" ? "active" : ""}">小</button>
+          <button data-fz="m" class="${fz === "m" ? "active" : ""}">標準</button>
+          <button data-fz="l" class="${fz === "l" ? "active" : ""}">大</button>
+          <button data-fz="xl" class="${fz === "xl" ? "active" : ""}">特大</button>
+        </div>
+      </div>
+      <div class="set-row">
+        <span>1日の目標（問題数）</span>
+        <input type="number" id="goalInput" min="1" max="500" value="${dailyGoal}" inputmode="numeric">
+      </div>
+      <p class="muted small" style="margin-top:4px">今日タブの「今日の目標」バーに反映されます。</p>
+    </div>
+    <div class="card">
       <h2>💾 データのバックアップ</h2>
       <p class="muted small">学習記録（SRS・連続日数・統計）は<b>この端末内だけ</b>に保存されます。端末変更・データ削除で消えるので、定期的に書き出して保管してください。</p>
       <div class="btn-row">
@@ -2371,6 +2413,27 @@ function renderProgress() {
       doImportBackup(document.getElementById("bkArea")),
     );
   document.getElementById("howtoBtn").addEventListener("click", showOnboarding);
+  view.querySelectorAll("#themeSeg button").forEach((b) =>
+    b.addEventListener("click", () => {
+      localStorage.setItem("theme", b.dataset.theme);
+      applyDisplayPrefs();
+      renderProgress();
+    }),
+  );
+  view.querySelectorAll("#fzSeg button").forEach((b) =>
+    b.addEventListener("click", () => {
+      localStorage.setItem("fontScale", b.dataset.fz);
+      applyDisplayPrefs();
+      renderProgress();
+    }),
+  );
+  const gi = document.getElementById("goalInput");
+  if (gi)
+    gi.addEventListener("change", () => {
+      const v = Math.max(1, Math.min(500, Number(gi.value) || 20));
+      localStorage.setItem("dailyGoal", v);
+      gi.value = v;
+    });
   const spg = document.getElementById("srsProgGo");
   if (spg) spg.addEventListener("click", startSrs);
   const opg = document.getElementById("overProgGo");
@@ -2498,8 +2561,16 @@ function showOnboarding() {
   });
 }
 
+// 表示設定（文字サイズ・テーマ）を <html> の data 属性に適用する。CSSで切替。
+function applyDisplayPrefs() {
+  const el = document.documentElement;
+  el.dataset.fz = localStorage.getItem("fontScale") || "m";
+  el.dataset.theme = localStorage.getItem("theme") || "dark";
+}
+
 // 座標系の設定を復元
 CalcUtil.coordMode = localStorage.getItem("calcCoordMode") || "local";
+applyDisplayPrefs();
 
 // 初期表示
 render("today");

@@ -384,3 +384,34 @@ mark { background: rgba(79,195,247,.28); color: inherit; border-radius: 3px; pad
 
 /* 学習推移ミニチャート */
 .trend-svg { width: 100%; height: auto; display: block; margin: 6px 0 2px; }
+
+/* ライトテーマ（主要UIは変数で切替。図は可読性のため暗いままにする） */
+html[data-theme="light"] {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --surface2: #eef1f5;
+  --border: #d6dde4;
+  --text: #1b2733;
+  --muted: #5c6b78;
+  --accent: #0277bd;
+  --accent-deep: #01579b;
+}
+/* 動く図解・講義図はテキスト色が暗色前提でハードコードされているため、ライトでも暗い背景を維持 */
+html[data-theme="light"] .pat-stage { background: #0c1014; border-color: #2e3942; }
+html[data-theme="light"] .lecfig { background: #1a2026; border-color: #2e3942; }
+html[data-theme="light"] .pat-narr { background: #eef1f5; }
+html[data-theme="light"] mark { background: rgba(2,119,189,.2); }
+/* ヘッダー/タブバーは背景がハードコードのため明色へ上書き */
+html[data-theme="light"] #appHeader { background: rgba(255,255,255,.92); }
+html[data-theme="light"] #tabBar { background: rgba(255,255,255,.96); }
+
+/* 表示設定（文字サイズ・目標） */
+html[data-fz="s"] body { font-size: 13.5px; }
+html[data-fz="l"] body { font-size: 17px; }
+html[data-fz="xl"] body { font-size: 19px; }
+.set-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 10px 0; }
+.set-row > span { font-size: 14px; }
+.set-row input[type="number"] { width: 84px; padding: 8px 10px; font-size: 15px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; text-align: right; }
+.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--border); border-radius: 99px; overflow: hidden; }
+.seg button { border: none; background: transparent; color: var(--muted); padding: 7px 13px; font-size: 13px; cursor: pointer; }
+.seg button.active { background: var(--accent); color: #00121b; font-weight: 700; }
