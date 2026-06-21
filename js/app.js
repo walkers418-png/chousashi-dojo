@@ -1609,7 +1609,7 @@ function evalCx(str) {
     .replace(/÷/g, "/")
     .replace(/−/g, "-")
     .replace(/π/g, String(Math.PI));
-  const toks = s.match(/\d+\.?\d*|\.\d+|[+\-*/()i∠]/g);
+  const toks = s.match(/Conjg|Re|Im|\d+\.?\d*|\.\d+|[+\-*/()i∠]/g);
   if (!toks) return null;
   let pos = 0;
   const peek = () => toks[pos];
@@ -1675,6 +1675,18 @@ function evalCx(str) {
       const ang = primary();
       const t = (ang.re * Math.PI) / 180;
       return Cx(Math.cos(t), Math.sin(t));
+    }
+    if (p === "Conjg" || p === "Re" || p === "Im") {
+      pos++;
+      let arg;
+      if (peek() === "(") {
+        pos++;
+        arg = expr();
+        if (peek() === ")") pos++;
+      } else arg = primary();
+      if (p === "Conjg") return Cx(arg.re, -arg.im);
+      if (p === "Re") return Cx(arg.re, 0);
+      return Cx(arg.im, 0); // Im: 虚部を実数として返す
     }
     if (isNum(p)) {
       pos++;
@@ -1805,6 +1817,7 @@ function calcBodyStd() {
       <div class="calc-pad">
         ${KEYS.map((k) => `<button class="calc-key${k === "=" ? " eq" : ""}${ops.includes(k) ? " op" : ""}${["sin", "cos", "tan", "√", "π"].includes(k) ? " fn" : ""}" data-k="${k}">${k}</button>`).join("")}
       </div>
+      <button class="btn ghost" id="ansToDms" style="margin-top:9px">答え（度）を度分秒に変換</button>
     </div>
     <div class="card">
       <h2>度分秒 ⇄ 十進度</h2>
@@ -1825,6 +1838,16 @@ function calcBodyStd() {
       res.textContent = "= " + fmtNum(r);
       disp.value = fmtNum(r);
     }
+  });
+  document.getElementById("ansToDms").addEventListener("click", () => {
+    const disp = document.getElementById("calcDisp");
+    const res = document.getElementById("calcRes");
+    const v = evalCalc(disp.value);
+    if (v === null) {
+      res.textContent = "数値を確認してください";
+      return;
+    }
+    res.innerHTML = `<b>${fmtNum(v)}°</b> ＝ <b>${degToDms(v)}</b>`;
   });
   const out = document.getElementById("dmsOut");
   const showOut = (html) => {
@@ -1884,6 +1907,14 @@ function calcBodyCmplx() {
     <div class="card">
       <input type="text" id="calcDisp" class="calc-disp" readonly value="" aria-label="複素数式" placeholder="例: 100+200i + 50∠30">
       <div id="calcRes" class="calc-res"></div>
+      <div class="optn-row">
+        <button class="chip" data-fn="Conjg(">Conjg(</button>
+        <button class="chip" data-fn="Re(">Re(</button>
+        <button class="chip" data-fn="Im(">Im(</button>
+        <button class="chip" data-conv="polar">▸r∠θ</button>
+        <button class="chip" data-conv="rect">▸a+bi</button>
+        <button class="chip" data-conv="dms">→度分秒</button>
+      </div>
       <div class="calc-pad">
         ${KEYS.map((k) => `<button class="calc-key${k === "=" ? " eq3" : ""}${ops.includes(k) ? " op" : ""}${["i", "∠"].includes(k) ? " fn" : ""}" data-k="${k}">${k}</button>`).join("")}
       </div>
@@ -1898,6 +1929,38 @@ function calcBodyCmplx() {
     res.innerHTML = `直交 X,Y: <b>${f.rect}</b><br>極 r∠θ: <b>${f.r} ∠ ${f.theta}°</b>　<span class="muted">(${f.dms})</span>`;
     disp.value = f.rect;
   });
+  view.querySelectorAll(".optn-row [data-fn]").forEach((b) =>
+    b.addEventListener("click", () => {
+      document.getElementById("calcDisp").value += b.dataset.fn;
+    }),
+  );
+  view
+    .querySelectorAll(".optn-row [data-conv]")
+    .forEach((b) =>
+      b.addEventListener("click", () => cmplxConvert(b.dataset.conv)),
+    );
+}
+
+// 複素数モードの表示変換（▸r∠θ / ▸a+bi / →度分秒）。現在の式を評価して整形する。
+function cmplxConvert(form) {
+  const disp = document.getElementById("calcDisp");
+  const res = document.getElementById("calcRes");
+  if (!disp) return;
+  const z = evalCx(disp.value);
+  if (!z) {
+    res.innerHTML = "式を確認してください";
+    return;
+  }
+  const f = fmtCx(z);
+  if (form === "polar") {
+    disp.value = f.r + "∠" + f.theta;
+    res.innerHTML = `極 r∠θ: <b>${f.r} ∠ ${f.theta}°</b>　<span class="muted">(${f.dms})</span>`;
+  } else if (form === "rect") {
+    disp.value = f.rect;
+    res.innerHTML = `直交 X,Y: <b>${f.rect}</b>`;
+  } else {
+    res.innerHTML = `方向角 θ = <b>${f.theta}°</b> ＝ <b>${f.dms}</b>`;
+  }
 }
 
 function calcBodyEqn(n) {
@@ -1907,8 +1970,8 @@ function calcBodyEqn(n) {
   for (let r = 0; r < n; r++) {
     let cells = "";
     for (let c = 0; c < n; c++)
-      cells += `<input class="eqn-in" id="eq_${r}_${c}" inputmode="decimal"><span class="eqn-var">${vars[c]}</span>${c < n - 1 ? '<span class="eqn-op">+</span>' : ""}`;
-    rows += `<div class="eqn-row">${cells}<span class="eqn-op">=</span><input class="eqn-in" id="eq_${r}_${n}" inputmode="decimal"></div>`;
+      cells += `<input class="eqn-in" id="eq_${r}_${c}" autocomplete="off"><span class="eqn-var">${vars[c]}</span>${c < n - 1 ? '<span class="eqn-op">+</span>' : ""}`;
+    rows += `<div class="eqn-row">${cells}<span class="eqn-op">=</span><input class="eqn-in" id="eq_${r}_${n}" autocomplete="off"></div>`;
   }
   document.getElementById("calcBody").innerHTML = `
     <div class="seg" id="eqnNSeg" style="margin:0 4px 10px">
@@ -1916,32 +1979,53 @@ function calcBodyEqn(n) {
       <button data-n="3" class="${n === 3 ? "active" : ""}">3元</button>
     </div>
     <div class="card">
-      <p class="muted small">各係数を入力して解きます（一次・実数）。空欄は0として扱います。</p>
+      <p class="muted small">各係数を入力して解きます（一次・実数）。空欄は0。係数に <code>sin(30)</code> などの式も入力できます。</p>
       ${rows}
       <button class="btn" id="eqnSolve">解く</button>
       <div id="eqnOut" class="expl" style="display:none"></div>
+      <button class="btn ghost" id="eqnToDms" style="display:none;margin-top:8px">答えを度分秒に変換</button>
     </div>`;
   view
     .querySelectorAll("#eqnNSeg button")
     .forEach((b) =>
       b.addEventListener("click", () => calcBodyEqn(+b.dataset.n)),
     );
+  const coef = (id) => {
+    const raw = document.getElementById(id).value.trim();
+    if (!raw) return 0;
+    const v = evalCalc(raw); // sin(30) などの式も可
+    return v === null ? Number(raw) || 0 : v;
+  };
   document.getElementById("eqnSolve").addEventListener("click", () => {
     const A = [],
       bb = [];
     for (let r = 0; r < n; r++) {
       const row = [];
-      for (let c = 0; c < n; c++)
-        row.push(Number(document.getElementById(`eq_${r}_${c}`).value) || 0);
+      for (let c = 0; c < n; c++) row.push(coef(`eq_${r}_${c}`));
       A.push(row);
-      bb.push(Number(document.getElementById(`eq_${r}_${n}`).value) || 0);
+      bb.push(coef(`eq_${r}_${n}`));
     }
     const out = document.getElementById("eqnOut");
+    const dmsBtn = document.getElementById("eqnToDms");
     out.style.display = "";
     const sol = solveLinear(A, bb);
-    out.innerHTML = sol
-      ? sol.map((v, i) => `<b>${vars[i]} = ${fmtNum(v)}</b>`).join("　")
-      : "解が一意に定まりません（係数行列が特異）。";
+    if (sol) {
+      out.innerHTML = sol
+        .map((v, i) => `<b>${vars[i]} = ${fmtNum(v)}</b>`)
+        .join("　");
+      dmsBtn.style.display = "";
+      dmsBtn.onclick = () => {
+        out.innerHTML = sol
+          .map(
+            (v, i) =>
+              `<b>${vars[i]} = ${fmtNum(v)}</b> <span class="muted">(${degToDms(v)})</span>`,
+          )
+          .join("<br>");
+      };
+    } else {
+      out.innerHTML = "解が一意に定まりません（係数行列が特異）。";
+      dmsBtn.style.display = "none";
+    }
   });
 }
 

@@ -430,6 +430,9 @@ html[data-fz="xl"] body { font-size: 19px; }
 .seg.seg-wide { display: flex; width: 100%; }
 .seg.seg-wide button { flex: 1; }
 .calc-res code, .lecture-body code, p code { background: var(--surface2); border-radius: 4px; padding: 1px 5px; font-size: .92em; }
+/* 複素数モード OPTN 機能チップ */
+.optn-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
+.optn-row .chip { background: var(--surface2); color: var(--accent); border: 1px solid var(--border); border-radius: 8px; padding: 7px 11px; font-size: 12.5px; cursor: pointer; }
 /* 連立方程式 */
 .eqn-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 9px 0; }
 .eqn-in { width: 56px; padding: 8px 6px; font-size: 15px; text-align: right; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
