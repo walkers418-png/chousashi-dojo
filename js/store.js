@@ -21,6 +21,7 @@ const Store = {
     this._cache.calib = this._cache.calib || { co: 0, cx: 0, uo: 0, ux: 0 }; // 自信度×正誤の集計
     this._cache.overconf = this._cache.overconf || {}; // {"quiz:M01": true} 過信（自信あり×不正解）項目
     this._cache.memos = this._cache.memos || {}; // {"quiz:M01": "自分メモ"} 間違いノートのメモ
+    this._cache.daily = this._cache.daily || {}; // {date: {ok, ng}} 日別の正答内訳（学習推移グラフ用）
     return this._cache;
   },
 
@@ -39,6 +40,30 @@ const Store = {
       d.days.push(t);
       this.save();
     }
+  },
+
+  // 日別の正答内訳を加算（学習推移グラフ用）。択一・一問一答・計算の解答時に呼ぶ。
+  bumpDaily(ok) {
+    const d = this.load();
+    const t = this.today();
+    const r = d.daily[t] || { ok: 0, ng: 0 };
+    ok ? r.ok++ : r.ng++;
+    d.daily[t] = r;
+  },
+
+  // 直近 n 日の日別内訳（古い→新しい順）。未学習日は0で埋める。
+  dailySeries(n) {
+    const d = this.load();
+    const out = [];
+    const cur = new Date();
+    for (let i = n - 1; i >= 0; i--) {
+      const dt = new Date(cur);
+      dt.setDate(cur.getDate() - i);
+      const key = dt.toISOString().slice(0, 10);
+      const r = d.daily[key] || { ok: 0, ng: 0 };
+      out.push({ date: key, ok: r.ok, ng: r.ng });
+    }
+    return out;
   },
 
   streak() {
@@ -61,6 +86,7 @@ const Store = {
     ok ? r.ok++ : r.ng++;
     r.last = this.today();
     d.quiz[qid] = r;
+    this.bumpDaily(ok);
     this.touchToday();
     this.save();
   },
@@ -70,6 +96,7 @@ const Store = {
     const r = d.flash[fid] || { ok: 0, ng: 0 };
     ok ? r.ok++ : r.ng++;
     d.flash[fid] = r;
+    this.bumpDaily(ok);
     this.touchToday();
     this.save();
   },
@@ -103,13 +130,30 @@ const Store = {
     const r = d.calc[type] || { ok: 0, ng: 0 };
     ok ? r.ok++ : r.ng++;
     d.calc[type] = r;
+    this.bumpDaily(ok);
     this.touchToday();
     this.save();
   },
 
-  recordWritten(wid, score, total) {
+  recordWritten(wid, score, total, meta) {
     const d = this.load();
-    d.written[wid] = { done: true, score, total, last: this.today() };
+    const sec = meta && meta.sec ? meta.sec : null;
+    const prev = d.written[wid] || {};
+    // ベスト所要時間は短い方を保持（時間配分の自己ベスト把握用）
+    const bestSec =
+      sec == null
+        ? prev.bestSec || null
+        : prev.bestSec
+          ? Math.min(prev.bestSec, sec)
+          : sec;
+    d.written[wid] = {
+      done: true,
+      score,
+      total,
+      last: this.today(),
+      sec,
+      bestSec,
+    };
     this.touchToday();
     this.save();
   },

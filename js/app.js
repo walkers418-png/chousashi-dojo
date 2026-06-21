@@ -383,18 +383,168 @@ function renderPattern(id) {
   draw();
 }
 
+// ─────────── 横断検索 ───────────
+// 講義・図解・記述・択一・一問一答・条文を1つのインデックスで横断検索する。
+let _searchIndex = null;
+function buildSearchIndex() {
+  if (_searchIndex) return _searchIndex;
+  const idx = [];
+  if (typeof LECTURES !== "undefined")
+    LECTURES.forEach((l) =>
+      idx.push({
+        type: "講義",
+        cat: l.cat,
+        label: l.title,
+        text: l.title + " " + stripHtml(l.body || ""),
+        open: () => renderLecture(l.id),
+      }),
+    );
+  if (typeof PATTERNS !== "undefined")
+    PATTERNS.forEach((p) =>
+      idx.push({
+        type: "図解",
+        cat: p.tag,
+        label: p.title,
+        text:
+          p.title +
+          " " +
+          (p.short || "") +
+          " " +
+          stripHtml(p.intro || "") +
+          " " +
+          (p.steps || []).join(" "),
+        open: () => renderPattern(p.id),
+      }),
+    );
+  if (typeof WRITTEN !== "undefined")
+    WRITTEN.forEach((w) =>
+      idx.push({
+        type: "記述",
+        cat: w.type,
+        label: w.title,
+        text: w.title + " " + stripHtml(w.statement || ""),
+        open: () => renderWritten(w.id),
+      }),
+    );
+  if (typeof QUESTIONS !== "undefined")
+    QUESTIONS.forEach((q) => {
+      const ans =
+        Array.isArray(q.choices) && typeof q.answer === "number"
+          ? q.choices[q.answer]
+          : "";
+      idx.push({
+        type: "択一",
+        cat: q.cat,
+        label: q.q,
+        text:
+          q.q +
+          " " +
+          (q.choices || []).join(" ") +
+          " " +
+          (q.stmts || []).join(" ") +
+          " " +
+          (q.expl || ""),
+        detail: `正解: <b>${esc(ans)}</b>${q.expl ? "<br>" + esc(q.expl) : ""}`,
+      });
+    });
+  if (typeof FLASH !== "undefined")
+    FLASH.forEach((f) =>
+      idx.push({
+        type: "一問一答",
+        cat: f.cat,
+        label: f.s,
+        text: f.s + " " + (f.expl || ""),
+        detail: `<b>${f.a ? "○ 正しい" : "✕ 誤り"}</b>　${esc(f.expl || "")}`,
+      }),
+    );
+  if (typeof ARTICLES !== "undefined")
+    Object.keys(ARTICLES).forEach((key) => {
+      const a = ARTICLES[key];
+      idx.push({
+        type: "条文",
+        cat: a.law,
+        label: a.law + " " + a.no + (a.title ? "（" + a.title + "）" : ""),
+        text: a.law + " " + a.no + " " + (a.title || "") + " " + (a.text || ""),
+        open: () => showArticlePopup(key),
+      });
+    });
+  _searchIndex = idx;
+  return idx;
+}
+function _hlight(s, terms) {
+  let out = esc(s);
+  terms.forEach((t) => {
+    if (!t) return;
+    const re = new RegExp(
+      "(" + t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")",
+      "gi",
+    );
+    out = out.replace(re, "<mark>$1</mark>");
+  });
+  return out;
+}
+function renderSearchResults(query) {
+  const cont = document.getElementById("searchResults");
+  const browse = document.getElementById("lecBrowse");
+  if (!cont) return;
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) {
+    cont.innerHTML = "";
+    if (browse) browse.style.display = "";
+    return;
+  }
+  if (browse) browse.style.display = "none";
+  const matches = buildSearchIndex().filter((e) => {
+    const hay = e.text.toLowerCase();
+    return terms.every((t) => hay.includes(t));
+  });
+  if (!matches.length) {
+    cont.innerHTML = `<p class="muted small" style="margin:14px 4px">「${esc(query)}」に一致する項目はありません。別の言葉でお試しください。</p>`;
+    return;
+  }
+  const order = ["講義", "図解", "記述", "択一", "一問一答", "条文"];
+  const byType = {};
+  matches.forEach((m) => (byType[m.type] = byType[m.type] || []).push(m));
+  const openable = [];
+  let html = `<p class="muted small" style="margin:10px 4px 2px">${matches.length}件ヒット</p>`;
+  order.forEach((type) => {
+    const list = byType[type];
+    if (!list) return;
+    const shown = list.slice(0, 25);
+    html += `<div class="srch-gh">${type}（${list.length}）</div>`;
+    shown.forEach((m) => {
+      if (m.open) {
+        const oi = openable.push(m) - 1;
+        html += `<div class="card clickable srch-item" data-so="${oi}"><span class="tag">${esc(m.cat || "")}</span> ${_hlight(m.label, terms)}</div>`;
+      } else {
+        html += `<details class="card srch-item"><summary><span class="tag">${esc(m.cat || "")}</span> ${_hlight(m.label, terms)}</summary><div class="expl">${m.detail}</div></details>`;
+      }
+    });
+    if (list.length > shown.length)
+      html += `<p class="muted small" style="margin:2px 4px 8px">他 ${list.length - shown.length} 件…（語を足すと絞り込めます）</p>`;
+  });
+  cont.innerHTML = html;
+  cont
+    .querySelectorAll("[data-so]")
+    .forEach((el) =>
+      el.addEventListener("click", () => openable[+el.dataset.so].open()),
+    );
+  // 択一の解説中の条文をタップ可能に
+  cont
+    .querySelectorAll("details .expl")
+    .forEach((el) => linkArticlesInElement(el));
+}
+
 function renderLectureList() {
   const cats = [...new Set(LECTURES.map((l) => l.cat))];
-  view.innerHTML =
-    `<h2 style="font-size:15px;margin:4px">講義ノート（全${LECTURES.length}ユニット）</h2>
-    <p class="muted small" style="margin:0 4px 12px">${impBadge(5)} は重要度（過去問ウェイト・★5が最優先）。本文中の<span class="artlink">青い条文</span>をタップすると全文が吹き出しで出ます。</p>
-    <div class="card clickable" data-patopen="1" style="border:1px solid var(--accent-deep)">
+  const browseHtml =
+    `<div class="card clickable" data-patopen="1" style="border:1px solid var(--accent-deep)">
       <b style="color:var(--accent)">🎬 パターン図解（動く図解）</b>
       <div class="muted small">取消し/解除/時効と登記・94条2項… 答えが分かれる論点をアニメで。勘違い型は大きな✕で警告</div>
     </div>` +
     cats
-      .map((cat) => {
-        const items = LECTURES.filter((l) => l.cat === cat)
+      .map((cat) =>
+        LECTURES.filter((l) => l.cat === cat)
           .map(
             (l) =>
               `<div class="card clickable" data-lec="${l.id}" style="padding:13px 14px">
@@ -402,10 +552,16 @@ function renderLectureList() {
           <div style="margin-top:5px">${esc(l.title)}</div>
         </div>`,
           )
-          .join("");
-        return items;
-      })
+          .join(""),
+      )
       .join("");
+  view.innerHTML = `<h2 style="font-size:15px;margin:4px">講義ノート（全${LECTURES.length}ユニット）</h2>
+    <input type="search" id="globalSearch" class="search-box" placeholder="🔍 講義・条文・問題・図解を横断検索" autocomplete="off">
+    <div id="searchResults"></div>
+    <p class="muted small" style="margin:6px 4px 12px">${impBadge(5)} は重要度（過去問ウェイト・★5が最優先）。本文中の<span class="artlink">青い条文</span>をタップすると全文が吹き出しで出ます。</p>
+    <div id="lecBrowse">${browseHtml}</div>`;
+  const si = document.getElementById("globalSearch");
+  si.addEventListener("input", () => renderSearchResults(si.value));
   view
     .querySelector("[data-patopen]")
     .addEventListener("click", renderPatternList);
@@ -1344,7 +1500,7 @@ function renderFullMockResult() {
       <div style="font-size:15px;margin:6px 0">所要 約${usedMin}分 / 150分</div>
       <div class="statgrid">
         <div class="stat"><div class="v">${st.qOk}<span style="font-size:14px;font-weight:400">/20</span></div><div class="l">択一（${qPts}点換算）</div></div>
-        <div class="stat"><div class="v">${wScore}<span style="font-size:14px;font-weight:400">/${wMax}</span></div><div class="l">記述 穴埋め正答</div></div>
+        <div class="stat"><div class="v">${wScore}<span style="font-size:14px;font-weight:400">/${wMax}</span></div><div class="l">記述（配点換算）</div></div>
       </div>
       <p class="muted small" style="margin-top:8px">択一は1問2.5点（基準点の目安32.5点）。記述は申請書・計算の穴埋め正答数です（作図・記述の質は本番採点と異なります）。</p>
       <button class="btn" id="againBtn">もう一度フル模試</button>
@@ -1621,11 +1777,12 @@ function renderWritten(id, opts) {
     <button class="back" id="backBtn">${opts.mock ? "← 模試を中断" : "← 記述式一覧"}</button>
     <div class="card">
       <span class="tag">${esc(w.type)}</span><span class="muted small">${esc(w.target)}</span>
+      ${opts.mock ? "" : `<span class="w-timer" id="wTimer">⏱ 00:00</span>`}
       <h2 style="margin-top:6px">${esc(w.title)}</h2>
       ${w.statement}
       ${coordsTable}
       <canvas class="fig" id="figCanvas" width="640" height="480"></canvas>
-      <p class="muted small">▲ 問題図（解答前は交点等は非表示）。作図は必ず紙でも行うこと。</p>
+      <p class="muted small">▲ 問題図。紙と三角定規・電卓で作図してから採点してください（採点後に「作図ステップ」で段階確認できます）。</p>
       <hr class="sep">
       <h3>計算問題</h3>
       ${tasksHtml}
@@ -1636,26 +1793,60 @@ function renderWritten(id, opts) {
       <div id="wResult"></div>
     </div>`;
 
-  drawFigure(w.figure, false);
+  drawFigure(w.figure, 0);
   // 問題文・申請書ヒント中の条文をタップ可能に（土地/建物/区分建物→不登法を既定法令とする）
   linkArticlesInElement(view, defLawForCat(w.type));
+
+  // 経過時間タイマー（標準記述式のみ・フル模試は専用タイマーがあるため省略）
+  const targetMin = Number((w.target.match(/(\d+)\s*分/) || [])[1]) || 0;
+  const wStart = Date.now();
+  const fmtMMSS = (sec) => {
+    const m = Math.floor(sec / 60),
+      s = sec % 60;
+    return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+  };
+  let wTimerInt = null;
+  if (document.getElementById("wTimer")) {
+    wTimerInt = setInterval(() => {
+      const el = document.getElementById("wTimer");
+      if (!el) {
+        clearInterval(wTimerInt);
+        return;
+      }
+      const sec = Math.floor((Date.now() - wStart) / 1000);
+      el.textContent = "⏱ " + fmtMMSS(sec);
+      if (targetMin && sec > targetMin * 60) el.classList.add("over");
+    }, 1000);
+  }
+
   document.getElementById("backBtn").addEventListener("click", () => {
+    if (wTimerInt) clearInterval(wTimerInt);
     if (opts.mock) {
       if (confirm("フル模試を中断しますか？")) abortFullMock();
     } else renderWrittenList();
   });
   document.getElementById("gradeBtn").addEventListener("click", () => {
-    let score = 0;
-    const total = w.tasks.length + w.appForm.length;
+    if (wTimerInt) {
+      clearInterval(wTimerInt);
+      wTimerInt = null;
+    }
+    const finalSec = Math.floor((Date.now() - wStart) / 1000);
+    // 項目別配点（ルーブリック）: 計算は既定2点・申請書は既定1点。データで pts を上書き可。
+    let calcGot = 0,
+      calcMax = 0,
+      formGot = 0,
+      formMax = 0;
     w.tasks.forEach((t, i) => {
+      const pts = t.pts || 2;
+      calcMax += pts;
       const el = document.getElementById(`wt${i}`);
       const v = Number(el.value);
       const ok = el.value !== "" && Math.abs(v - t.answer) <= t.tol;
-      if (ok) score++;
+      if (ok) calcGot += pts;
       el.classList.remove("fld-ok", "fld-ng");
       el.classList.add(ok ? "fld-ok" : "fld-ng");
       document.getElementById(`wtExpl${i}`).innerHTML =
-        `<div class="expl">${ok ? "✅ 正解" : "❌ 正答: <b>" + t.answer + (t.unit || "") + "</b>"}<br>${t.expl}</div>`;
+        `<div class="expl">${ok ? "✅ 正解 (+" + pts + "点)" : "❌ 正答: <b>" + t.answer + (t.unit || "") + "</b>"}<br>${t.expl}</div>`;
     });
     // 表記ゆれを許容: 空白・読点・カンマ・「金」を無視、全角英数を半角化。
     const norm = (s) =>
@@ -1666,26 +1857,71 @@ function renderWritten(id, opts) {
         )
         .toLowerCase();
     w.appForm.forEach((f, i) => {
+      const pts = f.pts || 1;
+      formMax += pts;
       const el = document.getElementById(`wf${i}`);
       // answer は文字列または「許容解の配列」。いずれかに一致すれば正解。
       const accepts = Array.isArray(f.answer) ? f.answer : [f.answer];
       const ok = accepts.some((a) => norm(el.value) === norm(a));
-      if (ok) score++;
+      if (ok) formGot += pts;
       el.classList.remove("fld-ok", "fld-ng");
       el.classList.add(ok ? "fld-ok" : "fld-ng");
       document.getElementById(`wfExpl${i}`).innerHTML = ok
         ? ""
         : `<div class="expl">正答: <b>${esc(accepts[0])}</b>${accepts.length > 1 ? `（他に「${accepts.slice(1).map(esc).join("」「")}」も可）` : ""}</div>`;
     });
-    Store.recordWritten(w.id, score, total);
+    const score = calcGot + formGot;
+    const total = calcMax + formMax;
+    Store.recordWritten(w.id, score, total, { sec: finalSec });
     updateStreak();
-    drawFigure(w.figure, true);
+    drawFigure(w.figure, 3);
+    const pct = total ? Math.round((score / total) * 100) : 0;
+    let timeNote;
+    if (targetMin) {
+      const over = finalSec - targetMin * 60;
+      timeNote =
+        over <= 0
+          ? `<span class="ok-text">⏱ ${fmtMMSS(finalSec)}（目標${targetMin}分以内 ✓）</span>`
+          : `<span class="ng-text">⏱ ${fmtMMSS(finalSec)}（目標${targetMin}分を ${Math.ceil(over / 60)}分 超過）</span>`;
+    } else {
+      timeNote = `⏱ ${fmtMMSS(finalSec)}`;
+    }
+    const pctBar = (g, m) => (m ? Math.round((g / m) * 100) : 0);
     document.getElementById("wResult").innerHTML = `
-      <div class="card" style="margin-top:12px;text-align:center;background:var(--surface2)">
-        <div style="font-size:28px;font-weight:800">${score} / ${total}</div>
-        <p class="muted small">図に解答（分筆線・交点）を表示しました。自分の作図と見比べること。</p>
+      <div class="card" style="margin-top:12px;background:var(--surface2)">
+        <div style="text-align:center">
+          <div style="font-size:28px;font-weight:800">${score} / ${total}点 <span class="muted" style="font-size:16px">(${pct}%)</span></div>
+          <div style="margin-top:2px">${timeNote}</div>
+        </div>
+        <div class="score-breakdown">
+          <div class="sb-row"><span>計算・求積</span><span>${calcGot} / ${calcMax}点</span></div>
+          <div class="sb-bar"><div style="width:${pctBar(calcGot, calcMax)}%"></div></div>
+          <div class="sb-row"><span>申請書</span><span>${formGot} / ${formMax}点</span></div>
+          <div class="sb-bar"><div style="width:${pctBar(formGot, formMax)}%"></div></div>
+        </div>
+        <div class="fig-steps" id="figSteps">
+          <span class="muted small">作図ステップ:</span>
+          <button class="chip" data-fl="0">①問題図</button>
+          <button class="chip" data-fl="1">②測点</button>
+          <button class="chip" data-fl="2">③分筆線</button>
+          <button class="chip active" data-fl="3">④求積</button>
+        </div>
+        <p class="muted small">自分の紙の作図とステップで見比べてください。${opts.mock ? "" : "配点は本番に近づけた目安（計算重視）です。"}</p>
         ${opts.mock ? '<button class="btn" id="mockWNext">記述採点を記録して次へ ▶</button>' : ""}
       </div>`;
+    // 作図ステップ切替
+    view.querySelectorAll("#figSteps .chip").forEach((b) =>
+      b.addEventListener("click", () => {
+        view
+          .querySelectorAll("#figSteps .chip")
+          .forEach((x) => x.classList.remove("active"));
+        b.classList.add("active");
+        drawFigure(w.figure, Number(b.dataset.fl));
+        document
+          .getElementById("figCanvas")
+          .scrollIntoView({ block: "center" });
+      }),
+    );
     // 解説中の条文もタップ可能に
     view
       .querySelectorAll('[id^="wtExpl"], [id^="wfExpl"]')
@@ -1698,7 +1934,10 @@ function renderWritten(id, opts) {
 }
 
 // 作図レンダラー（X=北を上、Y=東を右に描画）
+// level: 0=問題図(筆界+既知点) / 1=+交点(測点プロット) / 2=+分筆線 / 3=完成(求積ラベル)
+// 後方互換: reveal===false→0, reveal===true→3
 function drawFigure(fig, reveal) {
+  const level = reveal === true ? 3 : reveal === false ? 0 : reveal || 0;
   const canvas = document.getElementById("figCanvas");
   if (!canvas || !fig) return;
   const ctx = canvas.getContext("2d");
@@ -1777,8 +2016,8 @@ function drawFigure(fig, reveal) {
     }
   }
 
-  // 補助線（分筆線等）— revealがtrueのときのみ
-  if (reveal) {
+  // 補助線（分筆線等）— level2以降
+  if (level >= 2) {
     ctx.strokeStyle = "#d32f2f";
     ctx.lineWidth = 2;
     ctx.setLineDash([8, 5]);
@@ -1789,6 +2028,9 @@ function drawFigure(fig, reveal) {
       ctx.stroke();
     }
     ctx.setLineDash([]);
+  }
+  // 求積（面積ラベル）— level3（完成）のみ
+  if (level >= 3) {
     ctx.fillStyle = "#d32f2f";
     ctx.font = "13px sans-serif";
     for (const al of fig.areaLabels || []) {
@@ -1800,9 +2042,9 @@ function drawFigure(fig, reveal) {
     }
   }
 
-  // 点
+  // 点（交点等の revealPoints は level1 以降で表示）
   for (const n of names) {
-    const hidden = !reveal && (fig.revealPoints || []).includes(n);
+    const hidden = level < 1 && (fig.revealPoints || []).includes(n);
     if (hidden) continue;
     const isAnswer = (fig.revealPoints || []).includes(n);
     ctx.fillStyle = isAnswer ? "#d32f2f" : "#1565c0";
@@ -1936,6 +2178,31 @@ function doImportBackup(area) {
   });
 }
 
+// 学習推移のミニ棒グラフ（日別・正答=緑/不正解=赤を積み上げ）
+function miniTrendChart(series) {
+  const W = 320,
+    H = 96,
+    padX = 2,
+    baseY = H - 16,
+    top = 6;
+  const max = Math.max(1, ...series.map((s) => s.ok + s.ng));
+  const bw = (W - padX * 2) / series.length;
+  let bars = "";
+  series.forEach((s, i) => {
+    const tot = s.ok + s.ng;
+    const x = padX + i * bw;
+    const bh = (tot / max) * (baseY - top);
+    const okh = tot ? (s.ok / tot) * bh : 0;
+    if (tot) {
+      bars += `<rect x="${(x + 1).toFixed(1)}" y="${(baseY - bh).toFixed(1)}" width="${(bw - 2).toFixed(1)}" height="${(bh - okh).toFixed(1)}" fill="#ef5350"/>`;
+      bars += `<rect x="${(x + 1).toFixed(1)}" y="${(baseY - okh).toFixed(1)}" width="${(bw - 2).toFixed(1)}" height="${okh.toFixed(1)}" fill="#66bb6a"/>`;
+    }
+    if (i === 0 || i === series.length - 1)
+      bars += `<text x="${(x + bw / 2).toFixed(1)}" y="${H - 3}" text-anchor="middle" fill="#8fa0ae" font-size="9">${s.date.slice(5)}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" class="trend-svg"><line x1="0" y1="${baseY}" x2="${W}" y2="${baseY}" stroke="#2e3942"/>${bars}</svg>`;
+}
+
 function renderProgress() {
   const d = Store.load();
   const stats = Store.catStats();
@@ -1976,6 +2243,22 @@ function renderProgress() {
   const confTot = calib.co + calib.cx;
   const calibPct = confTot ? Math.round((calib.co / confTot) * 100) : null;
   const mistakeCount = Store.mistakeItems().length;
+  // 学習推移（直近14日）
+  const series = Store.dailySeries(14);
+  const seriesTotal = series.reduce((a, s) => a + s.ok + s.ng, 0);
+  // 記述式トラッカー（前回得点・ベスト所要時間）
+  const fmtSec = (s) =>
+    s == null
+      ? "—"
+      : Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+  const writtenDone = WRITTEN.filter((w) => d.written[w.id]).length;
+  const writtenRows = WRITTEN.map((w) => {
+    const r = d.written[w.id];
+    if (!r)
+      return `<tr><td>${esc(w.type)}</td><td>${esc(w.title)}</td><td class="num muted">—</td><td class="num muted">—</td></tr>`;
+    const pct = r.total ? Math.round((r.score / r.total) * 100) : 0;
+    return `<tr><td>${esc(w.type)}</td><td>${esc(w.title)}</td><td class="num">${r.score}/${r.total}<span class="muted" style="font-size:11px">（${pct}%）</span></td><td class="num">${fmtSec(r.bestSec)}</td></tr>`;
+  }).join("");
   // 合格予測（択一の実測正答率を 20問×2.5＝50点満点に換算した概算）
   const ansN = totalOk + totalNg;
   const estScore = ansN ? Math.round((totalOk / ansN) * 50 * 10) / 10 : 0;
@@ -2044,6 +2327,20 @@ function renderProgress() {
     <div class="card">
       <h2>計算道場</h2>
       <table class="simple"><tr><th>種目</th><th>解答数</th><th>正答率</th></tr>${calcRows}</table>
+    </div>
+    <div class="card">
+      <h2>📈 学習の推移（直近14日）</h2>
+      ${
+        seriesTotal
+          ? miniTrendChart(series) +
+            `<p class="muted small" style="text-align:center;margin-top:2px"><span style="color:var(--ok)">■</span> 正答　<span style="color:var(--ng)">■</span> 不正解　／　バーの高さ＝解答数</p>`
+          : `<p class="muted small">択一・一問一答・計算を解くと、ここに日別の学習量と正答内訳が積み上がります。</p>`
+      }
+    </div>
+    <div class="card">
+      <h2>📝 記述式トラッカー（${writtenDone}/${WRITTEN.length} 着手）</h2>
+      <p class="muted small">前回の得点と、自己ベストの所要時間。本番の時間配分づくりに。</p>
+      <table class="simple"><tr><th>区分</th><th>問題</th><th>前回</th><th>ベスト</th></tr>${writtenRows}</table>
     </div>
     <div class="card">
       <h2>📓 間違いノート（${mistakeCount}件）</h2>

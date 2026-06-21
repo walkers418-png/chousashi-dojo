@@ -359,3 +359,28 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
 .pat-progress > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent-deep), var(--accent)); transition: width .4s; }
 .pat-narr { background: var(--surface2); border-left: 3px solid var(--accent); border-radius: 0 10px 10px 0; padding: 11px 13px; font-size: 14px; line-height: 1.85; min-height: 70px; }
 .pat-step { display: inline-block; background: var(--accent-deep); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; margin-right: 8px; }
+
+/* 記述式: タイマー・項目別配点・作図ステップ */
+.w-timer { float: right; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 13px; color: var(--accent); background: var(--surface2); border: 1px solid var(--border); border-radius: 99px; padding: 2px 10px; }
+.w-timer.over { color: var(--warn); border-color: var(--warn); }
+.ok-text { color: var(--ok); font-weight: 700; }
+.ng-text { color: var(--warn); font-weight: 700; }
+.score-breakdown { margin: 12px 4px 4px; }
+.sb-row { display: flex; justify-content: space-between; font-size: 13px; margin: 8px 0 3px; }
+.sb-bar { height: 7px; background: var(--surface); border-radius: 99px; overflow: hidden; }
+.sb-bar > div { height: 100%; background: linear-gradient(90deg, var(--accent-deep), var(--accent)); border-radius: 99px; transition: width .5s; }
+.fig-steps { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 12px 0 4px; }
+.fig-steps .chip { background: var(--surface); color: var(--muted); border: 1px solid var(--border); border-radius: 99px; padding: 5px 11px; font-size: 12.5px; cursor: pointer; }
+.fig-steps .chip.active { background: var(--accent); color: #00121b; border-color: var(--accent); font-weight: 700; }
+
+/* 横断検索 */
+.search-box { width: 100%; box-sizing: border-box; margin: 4px 0 2px; padding: 11px 14px; font-size: 15px; color: var(--text); background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; outline: none; }
+.search-box:focus { border-color: var(--accent); }
+.srch-gh { margin: 12px 4px 4px; font-size: 12px; font-weight: 700; color: var(--accent); letter-spacing: .03em; }
+.srch-item { padding: 11px 13px; margin: 6px 0; font-size: 13.5px; line-height: 1.6; }
+.srch-item summary { cursor: pointer; list-style: revert; }
+.srch-item[open] summary { margin-bottom: 6px; }
+mark { background: rgba(79,195,247,.28); color: inherit; border-radius: 3px; padding: 0 1px; }
+
+/* 学習推移ミニチャート */
+.trend-svg { width: 100%; height: auto; display: block; margin: 6px 0 2px; }
