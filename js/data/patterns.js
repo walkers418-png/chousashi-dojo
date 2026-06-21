@@ -21,11 +21,14 @@ function _arrow(x1, y1, x2, y2, label, from, until, color) {
   color = color || "#8fa0ae";
   const mx = (x1 + x2) / 2,
     my = (y1 + y2) / 2;
+  // ラベルはカード列の上の余白（y<36）に置く。カード間の隙間(28px)より文字が長く、
+  // 矢印線上に置くとカードへ重なってしまうため、上の空きスペースへ逃がす。
+  const ly = Math.min(y1, y2) - 33;
   return _g(
     from,
     until,
     `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="2.5" marker-end="url(#ah)"/>
-     <text x="${mx}" y="${my - 7}" text-anchor="middle" fill="${color}" font-size="11.5" font-weight="bold">${label}</text>`,
+     <text x="${mx}" y="${ly}" text-anchor="middle" fill="${color}" font-size="11" font-weight="bold">${label}</text>`,
   );
 }
 function _note(x, y, text, from, until, color) {
@@ -33,7 +36,7 @@ function _note(x, y, text, from, until, color) {
   return _g(
     from,
     until,
-    `<text x="${x}" y="${y}" fill="${color}" font-size="12.5">${text}</text>`,
+    `<text x="${x}" y="${y}" fill="${color}" font-size="12">${text}</text>`,
   );
 }
 function _mark(x, y, type, from, until) {
@@ -42,7 +45,17 @@ function _mark(x, y, type, from, until) {
   return _g(
     from,
     until,
-    `<text x="${x}" y="${y}" text-anchor="middle" fill="${c}" font-size="72" font-weight="bold" opacity="0.92">${sym}</text>`,
+    `<text x="${x}" y="${y}" text-anchor="middle" fill="${c}" font-size="56" font-weight="bold" opacity="0.92">${sym}</text>`,
+  );
+}
+// 中央寄せキャプション（イラストのラベル用。重なり回避のため位置を厳密に置く）
+function _cap(x, y, text, from, until, color, size) {
+  color = color || "#e8edf2";
+  size = size || 11.5;
+  return _g(
+    from,
+    until,
+    `<text x="${x}" y="${y}" text-anchor="middle" fill="${color}" font-size="${size}" font-weight="bold">${text}</text>`,
   );
 }
 // ---- イラスト部品（建物・土地・人・登記簿）。手順と連動して出し入れする ----
@@ -105,7 +118,7 @@ function _book(x, y, from, until, label) {
 }
 
 function _svg(inner) {
-  return `<svg viewBox="0 0 360 300" xmlns="http://www.w3.org/2000/svg" class="patsvg" preserveAspectRatio="xMidYMid meet">
+  return `<svg viewBox="0 0 360 350" xmlns="http://www.w3.org/2000/svg" class="patsvg" preserveAspectRatio="xMidYMid meet">
     <defs><marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#8fa0ae"/></marker></defs>
     ${inner}</svg>`;
 }
@@ -167,7 +180,7 @@ const PATTERNS = [
           undefined,
           "#ef5350",
         ) +
-        _mark(300, 235, "x", 5),
+        _mark(180, 332, "x", 5),
     ),
     steps: [
       "Aは、Bの詐欺により自分の土地をBに売ってしまった（①）。AはこれをBの詐欺として取り消せる（96条1項）。",
@@ -233,7 +246,7 @@ const PATTERNS = [
           undefined,
           "#ef5350",
         ) +
-        _mark(300, 235, "x", 5),
+        _mark(180, 332, "x", 5),
     ),
     steps: [
       "AがBに土地を売った（①）。その後Bの債務不履行などでAが契約を解除した。",
@@ -299,7 +312,7 @@ const PATTERNS = [
           undefined,
           "#ef5350",
         ) +
-        _mark(300, 235, "x", 5),
+        _mark(180, 332, "x", 5),
     ),
     steps: [
       "Cが他人の土地を所有の意思で占有し続けている。元所有者（登記名義人）はA。",
@@ -355,7 +368,7 @@ const PATTERNS = [
           undefined,
           "#ef5350",
         ) +
-        _mark(305, 225, "x", 4),
+        _mark(180, 332, "x", 4),
     ),
     steps: [
       "AとBが通謀して、A所有の土地をBに売ったことにした（①仮装譲渡）。",
@@ -428,7 +441,7 @@ const PATTERNS = [
           undefined,
           "#ef5350",
         ) +
-        _mark(300, 235, "x", 5),
+        _mark(180, 332, "x", 5),
     ),
     steps: [
       "Aが土地をBに売ったが、Bはまだ登記をしていない（①）。",
@@ -488,7 +501,7 @@ const PATTERNS = [
           undefined,
           "#ef5350",
         ) +
-        _mark(300, 235, "x", 5),
+        _mark(180, 332, "x", 5),
     ),
     steps: [
       "Aの所有する動産を、無権利のBが占有している。",
@@ -507,18 +520,22 @@ const PATTERNS = [
     intro:
       "<p>土地に抵当権が設定され、競売で土地と建物の所有者が分かれたとき、建物のための<b>法定地上権</b>が成立するか。設定時の状態で決まる。</p>",
     scene: _svg(
+      // ── イラスト帯（y45-175）：ラベルは家の上・土地の右に逃がし重なりを防ぐ ──
       // 〈成立の型〉(手順0-1)：土地の上に建物、同一所有者
-      _note(
-        14,
-        30,
+      _cap(
+        180,
+        26,
         "〈成立の型〉設定時に建物あり・同一所有者",
         0,
         1,
         "#66bb6a",
       ) +
-        _land(34, 150, 150, 0, 1, "土地（抵当権）", "#4fc3f7") +
-        _house(70, 110, 0, 1, "建物", true) +
-        _person(252, 138, 0, 1, "同一所有者") +
+        _land(40, 140, 180, 0, 1, "", "#4fc3f7") +
+        _house(80, 104, 0, 1, "", true) +
+        _cap(107, 78, "建物", 0, 1, "#4fc3f7") +
+        _cap(178, 156, "土地（抵当権）", 0, 1, "#4fc3f7") +
+        _person(272, 112, 0, 1, "同一所有者", "#cfd8df") +
+        _mark(300, 226, "o", 1, 1) +
         _note(14, 196, "土地を競売 → 土地と建物の所有者が分離", 1, 1) +
         _note(
           14,
@@ -528,26 +545,28 @@ const PATTERNS = [
           1,
           "#66bb6a",
         ) +
-        _mark(305, 130, "o", 1, 1) +
         // 〈不成立の型〉(手順2-)：設定時は更地、後から建物
-        _note(
-          14,
-          30,
+        _cap(
+          180,
+          26,
           "〈不成立の型〉設定時は更地（建物なし）に抵当",
           2,
           undefined,
           "#ffb74d",
         ) +
-        _land(34, 150, 150, 2, undefined, "更地 → のち土地", "#ffb74d") +
-        _house(70, 110, 2, undefined, "設定後に築造", false) +
+        _land(40, 140, 180, 2, undefined, "", "#ffb74d") +
+        _house(80, 104, 2, undefined, "", false) +
+        _cap(107, 78, "設定後に築造", 2, undefined, "#ffb74d") +
+        _cap(178, 156, "更地（のち建物）", 2, undefined, "#ffb74d") +
+        _mark(298, 116, "x", 3, 4) +
         _note(
           14,
           196,
-          "→ 法定地上権は成立しない（更地として評価済み）",
+          "→ 法定地上権は成立しない（更地評価のため）",
           3,
           undefined,
+          "#ef5350",
         ) +
-        _mark(305, 130, "x", 3, 4) +
         _note(
           14,
           218,
@@ -558,21 +577,21 @@ const PATTERNS = [
         // ⚠ 勘違い (手順5)
         _note(
           14,
-          244,
-          "⚠ 更地に抵当後でも建物が建てば成立 … は",
+          250,
+          "⚠『更地に抵当→後で建物が建てば成立』は…",
           5,
           undefined,
           "#ef5350",
         ) +
         _note(
           14,
-          266,
+          272,
           "　✕ 設定時に建物がなければ成立しない",
           5,
           undefined,
           "#ef5350",
         ) +
-        _mark(180, 150, "x", 5),
+        _mark(180, 330, "x", 5),
     ),
     steps: [
       "〈成立の型〉抵当権を設定した時点で、土地の上にすでに建物があり、土地と建物が同一の所有者だった。土地に抵当権を設定。",
@@ -636,7 +655,7 @@ const PATTERNS = [
           undefined,
           "#ef5350",
         ) +
-        _mark(300, 235, "x", 5),
+        _mark(180, 332, "x", 5),
     ),
     steps: [
       "被相続人が死亡し、A・Bが法定相続分（各2分の1）で土地を共同相続した。",
@@ -687,7 +706,7 @@ const PATTERNS = [
           undefined,
           "#ef5350",
         ) +
-        _mark(300, 235, "x", 5),
+        _mark(180, 332, "x", 5),
     ),
     steps: [
       "Bが、Aの代理人と称してCと契約した（①無権代理）。本来は本人Aが追認しなければAに効果は生じない。",
@@ -765,7 +784,7 @@ const PATTERNS = [
           undefined,
           "#ef5350",
         ) +
-        _mark(300, 235, "x", 4),
+        _mark(180, 332, "x", 4),
     ),
     steps: [
       "抵当権の目的物が賃貸・売却され、賃料や代金が発生した。抵当権者はこれらに物上代位できる（372条・304条）。",
@@ -870,7 +889,7 @@ const PATTERNS = [
           undefined,
           "#ef5350",
         ) +
-        _mark(300, 230, "x", 3),
+        _mark(180, 332, "x", 3),
     ),
     steps: [
       "A・B・Cが連帯債務を負っている（債権者D）。連帯債務者の一人Aに生じた事由が、他のB・Cにも影響するかが問題になる。",
