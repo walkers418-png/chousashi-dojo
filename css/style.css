@@ -424,5 +424,14 @@ html[data-fz="xl"] body { font-size: 19px; }
 .calc-key.op { color: var(--accent); font-weight: 700; }
 .calc-key.fn { font-size: 14px; color: var(--muted); }
 .calc-key.eq { grid-column: 1 / -1; background: var(--accent); color: #00121b; font-weight: 700; }
+.calc-key.eq3 { grid-column: span 3; background: var(--accent); color: #00121b; font-weight: 700; }
 .dms-in { width: 62px; padding: 8px; margin-left: 4px; font-size: 15px; text-align: right; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
 .dms-in.wide { width: 150px; }
+.seg.seg-wide { display: flex; width: 100%; }
+.seg.seg-wide button { flex: 1; }
+.calc-res code, .lecture-body code, p code { background: var(--surface2); border-radius: 4px; padding: 1px 5px; font-size: .92em; }
+/* 連立方程式 */
+.eqn-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 9px 0; }
+.eqn-in { width: 56px; padding: 8px 6px; font-size: 15px; text-align: right; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.eqn-var { font-style: italic; font-weight: 700; margin-right: 2px; }
+.eqn-op { color: var(--muted); }

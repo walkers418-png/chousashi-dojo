@@ -1567,7 +1567,208 @@ function fmtNum(r) {
   return Number.isInteger(v) ? String(v) : String(Math.round(v * 1e8) / 1e8);
 }
 
-function renderCalculator() {
+// 度→度分秒の分解と整形（秒は小数2桁・繰り上げ処理つき）
+function dmsPartsOf(x) {
+  const sign = x < 0 ? "-" : "";
+  const v = Math.abs(x);
+  let d = Math.floor(v);
+  let m = Math.floor((v - d) * 60);
+  let s = Math.round(((v - d) * 60 - m) * 60 * 100) / 100;
+  if (s >= 60) {
+    s -= 60;
+    m += 1;
+  }
+  if (m >= 60) {
+    m -= 60;
+    d += 1;
+  }
+  return { sign, d, m, s };
+}
+function degToDms(x) {
+  const p = dmsPartsOf(x);
+  return `${p.sign}${p.d}° ${p.m}′ ${p.s}″`;
+}
+
+// ── 複素数（カシオ fx-JP500 複素数モード相当）。X=実部・Y=虚部、∠は度。──
+function Cx(re, im) {
+  return { re: re, im: im || 0 };
+}
+const CxOps = {
+  add: (a, b) => Cx(a.re + b.re, a.im + b.im),
+  sub: (a, b) => Cx(a.re - b.re, a.im - b.im),
+  mul: (a, b) => Cx(a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re),
+  div: (a, b) => {
+    const d = b.re * b.re + b.im * b.im;
+    return Cx((a.re * b.re + a.im * b.im) / d, (a.im * b.re - a.re * b.im) / d);
+  },
+};
+// 複素数式を再帰下降で評価。i・∠（極形式）・四則・括弧・暗黙の乗算に対応。
+function evalCx(str) {
+  const s = str
+    .replace(/×/g, "*")
+    .replace(/÷/g, "/")
+    .replace(/−/g, "-")
+    .replace(/π/g, String(Math.PI));
+  const toks = s.match(/\d+\.?\d*|\.\d+|[+\-*/()i∠]/g);
+  if (!toks) return null;
+  let pos = 0;
+  const peek = () => toks[pos];
+  const isNum = (t) => t && /[\d.]/.test(t[0]);
+  function expr() {
+    let v = term();
+    while (peek() === "+" || peek() === "-") {
+      const op = toks[pos++];
+      const t = term();
+      v = op === "+" ? CxOps.add(v, t) : CxOps.sub(v, t);
+    }
+    return v;
+  }
+  function term() {
+    let v = unary();
+    while (true) {
+      const p = peek();
+      if (p === "*" || p === "/") {
+        pos++;
+        const u = unary();
+        v = p === "*" ? CxOps.mul(v, u) : CxOps.div(v, u);
+      } else if (p === "(" || p === "i" || isNum(p)) {
+        v = CxOps.mul(v, unary()); // 暗黙の乗算（例: 4i, 2(3+i)）
+      } else break;
+    }
+    return v;
+  }
+  function unary() {
+    if (peek() === "-") {
+      pos++;
+      return CxOps.mul(Cx(-1, 0), unary());
+    }
+    if (peek() === "+") {
+      pos++;
+      return unary();
+    }
+    return polar();
+  }
+  function polar() {
+    const v = primary();
+    if (peek() === "∠") {
+      pos++;
+      const ang = primary();
+      const t = (ang.re * Math.PI) / 180;
+      return Cx(v.re * Math.cos(t), v.re * Math.sin(t));
+    }
+    return v;
+  }
+  function primary() {
+    const p = peek();
+    if (p === "(") {
+      pos++;
+      const v = expr();
+      if (peek() === ")") pos++;
+      return v;
+    }
+    if (p === "i") {
+      pos++;
+      return Cx(0, 1);
+    }
+    if (p === "∠") {
+      pos++;
+      const ang = primary();
+      const t = (ang.re * Math.PI) / 180;
+      return Cx(Math.cos(t), Math.sin(t));
+    }
+    if (isNum(p)) {
+      pos++;
+      return Cx(parseFloat(p), 0);
+    }
+    throw new Error("parse");
+  }
+  try {
+    const r = expr();
+    if (pos < toks.length) return null;
+    if (!isFinite(r.re) || !isFinite(r.im)) return null;
+    return r;
+  } catch (_) {
+    return null;
+  }
+}
+// 複素数の直交形式・極形式（方向角は0〜360度）を整形
+function fmtCx(z) {
+  const reZ = Math.abs(z.re) < 1e-9,
+    imZ = Math.abs(z.im) < 1e-9;
+  let rect;
+  if (imZ) rect = fmtNum(z.re);
+  else if (reZ) rect = fmtNum(z.im) + "i";
+  else
+    rect =
+      fmtNum(z.re) + (z.im >= 0 ? " + " : " - ") + fmtNum(Math.abs(z.im)) + "i";
+  const r = Math.hypot(z.re, z.im);
+  const az = ((((Math.atan2(z.im, z.re) * 180) / Math.PI) % 360) + 360) % 360;
+  return { rect, r: fmtNum(r), theta: fmtNum(az), dms: degToDms(az) };
+}
+
+// 連立一次方程式（n=2,3）。ガウス・ジョルダン消去。一意でなければ null。
+function solveLinear(A, b) {
+  const n = b.length;
+  const M = A.map((row, i) => row.concat([b[i]]));
+  for (let col = 0; col < n; col++) {
+    let piv = col;
+    for (let r = col + 1; r < n; r++)
+      if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
+    if (Math.abs(M[piv][col]) < 1e-10) return null;
+    [M[col], M[piv]] = [M[piv], M[col]];
+    for (let r = 0; r < n; r++) {
+      if (r === col) continue;
+      const f = M[r][col] / M[col][col];
+      for (let c = col; c <= n; c++) M[r][c] -= f * M[col][c];
+    }
+  }
+  return M.map((row, i) => row[n] / row[i]);
+}
+
+function renderCalculator(mode) {
+  mode = mode || "std";
+  view.innerHTML = `
+    <button class="back" id="backBtn">← 計算道場メニュー</button>
+    <h2 style="font-size:15px;margin:4px">関数電卓</h2>
+    <div class="seg seg-wide" id="calcModeSeg" style="margin:2px 4px 10px">
+      <button data-mode="std" class="${mode === "std" ? "active" : ""}">標準</button>
+      <button data-mode="cmplx" class="${mode === "cmplx" ? "active" : ""}">複素数</button>
+      <button data-mode="eqn" class="${mode === "eqn" ? "active" : ""}">連立方程式</button>
+    </div>
+    <div id="calcBody"></div>`;
+  document.getElementById("backBtn").addEventListener("click", renderCalcMenu);
+  view
+    .querySelectorAll("#calcModeSeg button")
+    .forEach((b) =>
+      b.addEventListener("click", () => renderCalculator(b.dataset.mode)),
+    );
+  if (mode === "cmplx") calcBodyCmplx();
+  else if (mode === "eqn") calcBodyEqn(2);
+  else calcBodyStd();
+}
+
+// 共通: 表示式を組み立てるキーパッドの配線（評価関数は呼び出し側が渡す）
+function wireKeypad(onEquals) {
+  const disp = document.getElementById("calcDisp");
+  const res = document.getElementById("calcRes");
+  document.querySelectorAll("#calcBody .calc-key").forEach((b) =>
+    b.addEventListener("click", () => {
+      const k = b.dataset.k;
+      if (k === "AC") {
+        disp.value = "";
+        res.innerHTML = "";
+      } else if (k === "←") {
+        disp.value = disp.value.slice(0, -1);
+      } else if (k === "=") {
+        onEquals(disp, res);
+      } else {
+        disp.value += ["sin", "cos", "tan", "√"].includes(k) ? k + "(" : k;
+      }
+    }),
+  );
+}
+
+function calcBodyStd() {
   const KEYS = [
     "AC",
     "←",
@@ -1596,10 +1797,8 @@ function renderCalculator() {
     "=",
   ];
   const ops = ["÷", "×", "−", "+"];
-  view.innerHTML = `
-    <button class="back" id="backBtn">← 計算道場メニュー</button>
-    <h2 style="font-size:15px;margin:4px">関数電卓・度分秒変換</h2>
-    <p class="muted small" style="margin:0 4px 10px">本番は持込の関数電卓を使います。これは学習中のスキマ計算用。<b>三角関数は度(°)</b>で計算します（例: sin(30) = 0.5）。</p>
+  document.getElementById("calcBody").innerHTML = `
+    <p class="muted small" style="margin:0 4px 10px"><b>三角関数は度(°)</b>で計算します（例: sin(30) = 0.5）。</p>
     <div class="card">
       <input type="text" id="calcDisp" class="calc-disp" readonly value="" aria-label="式">
       <div id="calcRes" class="calc-res"></div>
@@ -1618,33 +1817,15 @@ function renderCalculator() {
       <button class="btn secondary" id="toDms" style="margin-top:2px">十進度 → 度分秒</button>
       <div id="dmsOut" class="expl" style="display:none"></div>
     </div>`;
-  document.getElementById("backBtn").addEventListener("click", renderCalcMenu);
-  const disp = document.getElementById("calcDisp");
-  const res = document.getElementById("calcRes");
-  view.querySelectorAll(".calc-key").forEach((b) =>
-    b.addEventListener("click", () => {
-      const k = b.dataset.k;
-      if (k === "AC") {
-        disp.value = "";
-        res.textContent = "";
-      } else if (k === "←") {
-        disp.value = disp.value.slice(0, -1);
-      } else if (k === "=") {
-        const r = evalCalc(disp.value);
-        if (r === null) {
-          res.textContent = "式を確認してください";
-        } else {
-          res.textContent = "= " + fmtNum(r);
-          disp.value = fmtNum(r);
-        }
-      } else {
-        // sin/cos/tan/√ は開き括弧つきで挿入
-        const ins = ["sin", "cos", "tan", "√"].includes(k) ? k + "(" : k;
-        disp.value += ins;
-      }
-    }),
-  );
-  // 度分秒 ⇄ 十進度
+  wireKeypad((disp, res) => {
+    const r = evalCalc(disp.value);
+    if (r === null) {
+      res.textContent = "式を確認してください";
+    } else {
+      res.textContent = "= " + fmtNum(r);
+      disp.value = fmtNum(r);
+    }
+  });
   const out = document.getElementById("dmsOut");
   const showOut = (html) => {
     out.style.display = "";
@@ -1654,8 +1835,7 @@ function renderCalculator() {
     const D = Number(document.getElementById("dmsD").value) || 0;
     const M = Number(document.getElementById("dmsM").value) || 0;
     const S = Number(document.getElementById("dmsS").value) || 0;
-    const sign = D < 0 ? -1 : 1;
-    const dec = sign * (Math.abs(D) + M / 60 + S / 3600);
+    const dec = (D < 0 ? -1 : 1) * (Math.abs(D) + M / 60 + S / 3600);
     document.getElementById("decDeg").value = fmtNum(dec);
     showOut(`${D}° ${M}′ ${S}″ ＝ <b>${fmtNum(dec)}°</b>（十進度）`);
   });
@@ -1665,23 +1845,103 @@ function renderCalculator() {
       showOut("十進度の数値を入力してください。");
       return;
     }
-    const sign = x < 0 ? "-" : "";
-    let v = Math.abs(x);
-    let d = Math.floor(v);
-    let m = Math.floor((v - d) * 60);
-    let s = Math.round(((v - d) * 60 - m) * 60 * 100) / 100;
-    if (s >= 60) {
-      s -= 60;
-      m += 1;
+    const p = dmsPartsOf(x);
+    document.getElementById("dmsD").value = p.sign + p.d;
+    document.getElementById("dmsM").value = p.m;
+    document.getElementById("dmsS").value = p.s;
+    showOut(`<b>${fmtNum(x)}°</b> ＝ ${degToDms(x)}`);
+  });
+}
+
+function calcBodyCmplx() {
+  const KEYS = [
+    "AC",
+    "←",
+    "(",
+    ")",
+    "7",
+    "8",
+    "9",
+    "÷",
+    "4",
+    "5",
+    "6",
+    "×",
+    "1",
+    "2",
+    "3",
+    "−",
+    "0",
+    ".",
+    "i",
+    "+",
+    "∠",
+    "=",
+  ];
+  const ops = ["÷", "×", "−", "+"];
+  document.getElementById("calcBody").innerHTML = `
+    <p class="muted small" style="margin:0 4px 10px">カシオ複素数モード相当。<b>X=実部・Y=虚部</b>、<b>∠＝方向角(度)</b>。<br>放射計算: <code>既知点 ＋ 距離∠方向角</code>　逆計算: <code>(新点−既知点)</code> を = して極形式 r∠θ を読む。</p>
+    <div class="card">
+      <input type="text" id="calcDisp" class="calc-disp" readonly value="" aria-label="複素数式" placeholder="例: 100+200i + 50∠30">
+      <div id="calcRes" class="calc-res"></div>
+      <div class="calc-pad">
+        ${KEYS.map((k) => `<button class="calc-key${k === "=" ? " eq3" : ""}${ops.includes(k) ? " op" : ""}${["i", "∠"].includes(k) ? " fn" : ""}" data-k="${k}">${k}</button>`).join("")}
+      </div>
+    </div>`;
+  wireKeypad((disp, res) => {
+    const z = evalCx(disp.value);
+    if (!z) {
+      res.innerHTML = "式を確認してください";
+      return;
     }
-    if (m >= 60) {
-      m -= 60;
-      d += 1;
+    const f = fmtCx(z);
+    res.innerHTML = `直交 X,Y: <b>${f.rect}</b><br>極 r∠θ: <b>${f.r} ∠ ${f.theta}°</b>　<span class="muted">(${f.dms})</span>`;
+    disp.value = f.rect;
+  });
+}
+
+function calcBodyEqn(n) {
+  n = n || 2;
+  const vars = ["x", "y", "z"].slice(0, n);
+  let rows = "";
+  for (let r = 0; r < n; r++) {
+    let cells = "";
+    for (let c = 0; c < n; c++)
+      cells += `<input class="eqn-in" id="eq_${r}_${c}" inputmode="decimal"><span class="eqn-var">${vars[c]}</span>${c < n - 1 ? '<span class="eqn-op">+</span>' : ""}`;
+    rows += `<div class="eqn-row">${cells}<span class="eqn-op">=</span><input class="eqn-in" id="eq_${r}_${n}" inputmode="decimal"></div>`;
+  }
+  document.getElementById("calcBody").innerHTML = `
+    <div class="seg" id="eqnNSeg" style="margin:0 4px 10px">
+      <button data-n="2" class="${n === 2 ? "active" : ""}">2元</button>
+      <button data-n="3" class="${n === 3 ? "active" : ""}">3元</button>
+    </div>
+    <div class="card">
+      <p class="muted small">各係数を入力して解きます（一次・実数）。空欄は0として扱います。</p>
+      ${rows}
+      <button class="btn" id="eqnSolve">解く</button>
+      <div id="eqnOut" class="expl" style="display:none"></div>
+    </div>`;
+  view
+    .querySelectorAll("#eqnNSeg button")
+    .forEach((b) =>
+      b.addEventListener("click", () => calcBodyEqn(+b.dataset.n)),
+    );
+  document.getElementById("eqnSolve").addEventListener("click", () => {
+    const A = [],
+      bb = [];
+    for (let r = 0; r < n; r++) {
+      const row = [];
+      for (let c = 0; c < n; c++)
+        row.push(Number(document.getElementById(`eq_${r}_${c}`).value) || 0);
+      A.push(row);
+      bb.push(Number(document.getElementById(`eq_${r}_${n}`).value) || 0);
     }
-    document.getElementById("dmsD").value = sign + d;
-    document.getElementById("dmsM").value = m;
-    document.getElementById("dmsS").value = s;
-    showOut(`<b>${fmtNum(x)}°</b> ＝ ${sign}${d}° ${m}′ ${s}″`);
+    const out = document.getElementById("eqnOut");
+    out.style.display = "";
+    const sol = solveLinear(A, bb);
+    out.innerHTML = sol
+      ? sol.map((v, i) => `<b>${vars[i]} = ${fmtNum(v)}</b>`).join("　")
+      : "解が一意に定まりません（係数行列が特異）。";
   });
 }
 
