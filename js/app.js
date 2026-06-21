@@ -1525,6 +1525,166 @@ function renderFullMockResult() {
 }
 
 // ─────────── 計算道場 ───────────
+// 関数電卓の安全な式評価。ボタンで組んだ式（÷×−√π・sin/cos/tan）だけを受け付ける。
+// 三角関数は度。許可文字以外が混じる式は null（評価しない）。
+function evalCalc(disp) {
+  let e = disp
+    .replace(/÷/g, "/")
+    .replace(/×/g, "*")
+    .replace(/−/g, "-")
+    .replace(/√/g, "SQRT")
+    .replace(/π/g, "PI")
+    .replace(/sin/g, "SIN")
+    .replace(/cos/g, "COS")
+    .replace(/tan/g, "TAN");
+  if (!e.trim()) return null;
+  // 数字・小数点・四則・括弧・空白と、置換後の関数名の文字(SINCOTAQRP)のみ許可
+  if (/[^0-9.+\-*/()\sSINCOTAQRP]/.test(e)) return null;
+  try {
+    const f = new Function(
+      "SIN",
+      "COS",
+      "TAN",
+      "SQRT",
+      "PI",
+      '"use strict";return (' + e + ");",
+    );
+    const r = f(
+      (x) => Math.sin((x * Math.PI) / 180),
+      (x) => Math.cos((x * Math.PI) / 180),
+      (x) => Math.tan((x * Math.PI) / 180),
+      Math.sqrt,
+      Math.PI,
+    );
+    return typeof r === "number" && isFinite(r) ? r : null;
+  } catch (_) {
+    return null;
+  }
+}
+function fmtNum(r) {
+  // 浮動小数の誤差を丸めて、整数はそのまま・小数は最大8桁で表示
+  const v = parseFloat(r.toPrecision(12));
+  return Number.isInteger(v) ? String(v) : String(Math.round(v * 1e8) / 1e8);
+}
+
+function renderCalculator() {
+  const KEYS = [
+    "AC",
+    "←",
+    "(",
+    ")",
+    "sin",
+    "cos",
+    "tan",
+    "√",
+    "7",
+    "8",
+    "9",
+    "÷",
+    "4",
+    "5",
+    "6",
+    "×",
+    "1",
+    "2",
+    "3",
+    "−",
+    "0",
+    ".",
+    "π",
+    "+",
+    "=",
+  ];
+  const ops = ["÷", "×", "−", "+"];
+  view.innerHTML = `
+    <button class="back" id="backBtn">← 計算道場メニュー</button>
+    <h2 style="font-size:15px;margin:4px">関数電卓・度分秒変換</h2>
+    <p class="muted small" style="margin:0 4px 10px">本番は持込の関数電卓を使います。これは学習中のスキマ計算用。<b>三角関数は度(°)</b>で計算します（例: sin(30) = 0.5）。</p>
+    <div class="card">
+      <input type="text" id="calcDisp" class="calc-disp" readonly value="" aria-label="式">
+      <div id="calcRes" class="calc-res"></div>
+      <div class="calc-pad">
+        ${KEYS.map((k) => `<button class="calc-key${k === "=" ? " eq" : ""}${ops.includes(k) ? " op" : ""}${["sin", "cos", "tan", "√", "π"].includes(k) ? " fn" : ""}" data-k="${k}">${k}</button>`).join("")}
+      </div>
+    </div>
+    <div class="card">
+      <h2>度分秒 ⇄ 十進度</h2>
+      <p class="muted small">測量の角度は度分秒。計算では十進度に直して使います。</p>
+      <div class="set-row"><span>度 / 分 / 秒</span>
+        <span><input id="dmsD" class="dms-in" inputmode="numeric" placeholder="度"><input id="dmsM" class="dms-in" inputmode="numeric" placeholder="分"><input id="dmsS" class="dms-in" inputmode="decimal" placeholder="秒"></span>
+      </div>
+      <button class="btn secondary" id="toDec" style="margin-top:2px">度分秒 → 十進度</button>
+      <div class="set-row" style="margin-top:12px"><span>十進度</span><input id="decDeg" class="dms-in wide" inputmode="decimal" placeholder="例: 123.456789"></div>
+      <button class="btn secondary" id="toDms" style="margin-top:2px">十進度 → 度分秒</button>
+      <div id="dmsOut" class="expl" style="display:none"></div>
+    </div>`;
+  document.getElementById("backBtn").addEventListener("click", renderCalcMenu);
+  const disp = document.getElementById("calcDisp");
+  const res = document.getElementById("calcRes");
+  view.querySelectorAll(".calc-key").forEach((b) =>
+    b.addEventListener("click", () => {
+      const k = b.dataset.k;
+      if (k === "AC") {
+        disp.value = "";
+        res.textContent = "";
+      } else if (k === "←") {
+        disp.value = disp.value.slice(0, -1);
+      } else if (k === "=") {
+        const r = evalCalc(disp.value);
+        if (r === null) {
+          res.textContent = "式を確認してください";
+        } else {
+          res.textContent = "= " + fmtNum(r);
+          disp.value = fmtNum(r);
+        }
+      } else {
+        // sin/cos/tan/√ は開き括弧つきで挿入
+        const ins = ["sin", "cos", "tan", "√"].includes(k) ? k + "(" : k;
+        disp.value += ins;
+      }
+    }),
+  );
+  // 度分秒 ⇄ 十進度
+  const out = document.getElementById("dmsOut");
+  const showOut = (html) => {
+    out.style.display = "";
+    out.innerHTML = html;
+  };
+  document.getElementById("toDec").addEventListener("click", () => {
+    const D = Number(document.getElementById("dmsD").value) || 0;
+    const M = Number(document.getElementById("dmsM").value) || 0;
+    const S = Number(document.getElementById("dmsS").value) || 0;
+    const sign = D < 0 ? -1 : 1;
+    const dec = sign * (Math.abs(D) + M / 60 + S / 3600);
+    document.getElementById("decDeg").value = fmtNum(dec);
+    showOut(`${D}° ${M}′ ${S}″ ＝ <b>${fmtNum(dec)}°</b>（十進度）`);
+  });
+  document.getElementById("toDms").addEventListener("click", () => {
+    const x = Number(document.getElementById("decDeg").value);
+    if (!isFinite(x)) {
+      showOut("十進度の数値を入力してください。");
+      return;
+    }
+    const sign = x < 0 ? "-" : "";
+    let v = Math.abs(x);
+    let d = Math.floor(v);
+    let m = Math.floor((v - d) * 60);
+    let s = Math.round(((v - d) * 60 - m) * 60 * 100) / 100;
+    if (s >= 60) {
+      s -= 60;
+      m += 1;
+    }
+    if (m >= 60) {
+      m -= 60;
+      d += 1;
+    }
+    document.getElementById("dmsD").value = sign + d;
+    document.getElementById("dmsM").value = m;
+    document.getElementById("dmsS").value = s;
+    showOut(`<b>${fmtNum(x)}°</b> ＝ ${sign}${d}° ${m}′ ${s}″`);
+  });
+}
+
 function renderCalcMenu() {
   const d = Store.load();
   view.innerHTML =
@@ -1537,6 +1697,10 @@ function renderCalcMenu() {
     <div class="card clickable" data-calc-mix="1" style="border:1px solid var(--accent-deep)">
       <b style="color:var(--accent)">🔀 種目ごちゃ混ぜ（インターリービング）</b>
       <div class="muted small">毎問ランダムに別の種目を出題。「どの解法を使うか」を見抜く力が鍛わり、本試験に直結（研究で効果実証）</div>
+    </div>
+    <div class="card clickable" data-calc-tool="1" style="border:1px solid var(--accent-deep)">
+      <b style="color:var(--accent)">🔢 関数電卓・度分秒変換</b>
+      <div class="muted small">三角関数(度)・√の計算と、度分秒⇄十進度の相互変換。スキマ計算に。</div>
     </div>
     <div class="card" style="padding:11px 14px">
       <div class="muted small" style="margin-bottom:7px">座標系（小数第3位・mm表示）</div>
@@ -1576,6 +1740,9 @@ function renderCalcMenu() {
   view
     .querySelector("[data-calc-mix]")
     .addEventListener("click", () => renderCalcProblem("__mix__"));
+  view
+    .querySelector("[data-calc-tool]")
+    .addEventListener("click", renderCalculator);
   view.querySelectorAll("[data-coord]").forEach((el) =>
     el.addEventListener("click", () => {
       CalcUtil.coordMode = el.dataset.coord;
