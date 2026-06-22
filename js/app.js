@@ -625,7 +625,7 @@ function renderLecture(id) {
   view.innerHTML = `
     <button class="back" id="backBtn">← 講義一覧へ</button>
     <div class="card">
-      <span class="tag">${esc(l.cat)}</span>${impBadge(LECTURE_IMP[l.id])}${TTS.supported ? '<button class="spk" id="lecSpk" title="講義を音声で聴く">🔊</button>' : ""}
+      <span class="tag">${esc(l.cat)}</span>${impBadge(LECTURE_IMP[l.id])}${TTS.supported || ZAUDIO.has("lec_" + l.id) ? `<button class="spk" id="lecSpk" title="講義を音声で聴く">🔊${ZAUDIO.has("lec_" + l.id) ? "🫛" : ""}</button>` : ""}
       <h2 style="margin-top:6px">${esc(l.title)}</h2>
       <div class="lecture-body">${l.body}</div>
       <button class="btn secondary" id="toQuiz">この分野の択一を解く →</button>
@@ -633,14 +633,14 @@ function renderLecture(id) {
   const body = view.querySelector(".lecture-body");
   linkArticlesInElement(body, defLawForCat(l.cat));
   linkArticlesInSvg(body, defLawForCat(l.cat));
-  if (TTS.supported) {
-    const ls = document.getElementById("lecSpk");
-    // 講義タイトル＋本文を文ごとに分割して「音楽プレーヤー」風に聴ける
+  const ls = document.getElementById("lecSpk");
+  if (ls) {
+    // 講義タイトル＋本文。音声があればずんだもん本人の声、無ければTTSで文ごと再生。
     const segs = [
       { text: l.title, label: "タイトル" },
       ...splitForSpeech(body.textContent, "講義"),
     ];
-    if (ls) ls.addEventListener("click", () => TTS.play(segs));
+    ls.addEventListener("click", () => speakContent("lec_" + id, segs, "講義"));
   }
   document
     .getElementById("backBtn")
@@ -705,7 +705,7 @@ function renderQuizMenu() {
       <label class="modetog"><input type="checkbox" data-mode="explain" ${MODE("explain") ? "checked" : ""}><span><b>自己説明</b><br><span class="muted small">解説の前に「なぜ？」を自分の言葉で説明（精緻化）</span></span></label>
       <label class="modetog"><input type="checkbox" data-mode="conf" ${MODE("conf") ? "checked" : ""}><span><b>自信度の記録</b><br><span class="muted small">答え合わせ前に自信を申告→「過信（自信あり×不正解）」を優先復習（較正）</span></span></label>
       ${TTS.supported ? `<label class="modetog"><input type="checkbox" data-mode="tts" ${MODE("tts") ? "checked" : ""}><span><b>🔊 自動読み上げ</b><br><span class="muted small">問題・解説を音声で自動再生（ハンズフリー）。各問・講義・条文の🔊でも再生でき、前/次/一時停止/速度(1〜2倍)を操作できます</span></span></label>` : ""}
-      ${TTS.supported ? `<label class="modetog"><input type="checkbox" data-mode="zunda" ${localStorage.getItem("mode_zunda") !== "0" ? "checked" : ""}><span><b>🫛 ずんだもん口調</b><br><span class="muted small">読み上げの語尾を「〜のだ」調・高めの声に（端末内蔵の声を使うため、VOICEVOXのずんだもん本人の声ではありません）</span></span></label>` : ""}
+      ${TTS.supported ? `<label class="modetog"><input type="checkbox" data-mode="zunda" ${localStorage.getItem("mode_zunda") !== "0" ? "checked" : ""}><span><b>🫛 ずんだもん口調</b><br><span class="muted small">🫛印の付いた講義・問題は<b>VOICEVOXのずんだもん本人の声</b>（事前生成）で再生。それ以外はこの設定で端末内蔵の声を「〜のだ」調・高めにして読み上げます。<br>音声生成: <b>VOICEVOX:ずんだもん</b></span></span></label>` : ""}
     </div>
     <h2 style="font-size:15px;margin:14px 4px 8px">択一・分野別演習</h2>
     ${catBtns}`;
@@ -832,6 +832,7 @@ const TTS = {
   },
   play(segments) {
     if (!this.supported) return;
+    if (typeof ZAUDIO !== "undefined") ZAUDIO.stop(); // 事前生成音声と重ねない
     const q = (segments || []).filter((s) => s && stripHtml(s.text));
     if (!q.length) return;
     this.q = q;
@@ -940,6 +941,100 @@ const TTS = {
   },
 };
 
+// 事前生成した「ずんだもん本人の声」(VOICEVOX) のMP3を再生する。
+// 音声が用意された講義・問題ではこれを使い、未収録の項目は TTS（内蔵の声）に自動フォールバック。
+// クレジット表記「VOICEVOX:ずんだもん」必須（プレイヤーバーに常時表示）。
+const ZAUDIO = {
+  manifest: {},
+  ready: false,
+  el: null,
+  id: null,
+  async load() {
+    try {
+      const r = await fetch("audio/manifest.json", { cache: "no-cache" });
+      this.manifest = r.ok ? await r.json() : {};
+    } catch (e) {
+      this.manifest = {};
+    }
+    this.ready = true;
+  },
+  has(id) {
+    return !!this.manifest[id];
+  },
+  _rate() {
+    const r = Number(localStorage.getItem("ttsRate"));
+    return TTS_RATES.includes(r) ? r : 1;
+  },
+  toggle(id, label) {
+    // 同一音声が再生中なら一時停止／再開
+    if (this.id === id && this.el) {
+      this.el.paused ? this.el.play() : this.el.pause();
+      this._bar(label);
+      return;
+    }
+    this.stop();
+    if (TTS.supported) TTS.stop(); // TTSと重ねない
+    const a = new Audio("audio/" + id + ".mp3");
+    a.playbackRate = this._rate();
+    this.el = a;
+    this.id = id;
+    a.onplay = () => this._bar(label);
+    a.onpause = () => this._bar(label);
+    a.onended = () => this.stop();
+    a.onerror = () => this.stop();
+    a.play().catch(() => {});
+    this._bar(label);
+  },
+  cycleRate() {
+    const nx =
+      TTS_RATES[(TTS_RATES.indexOf(this._rate()) + 1) % TTS_RATES.length];
+    localStorage.setItem("ttsRate", String(nx));
+    if (this.el) this.el.playbackRate = nx;
+    this._bar();
+  },
+  stop() {
+    if (this.el) {
+      this.el.pause();
+      this.el = null;
+      this.id = null;
+    }
+    const b = document.getElementById("zPlayer");
+    if (b) b.style.display = "none";
+  },
+  _bar(label) {
+    let b = document.getElementById("zPlayer");
+    if (!b) {
+      b = document.createElement("div");
+      b.id = "zPlayer";
+      b.innerHTML = `
+        <button id="zToggle" aria-label="再生／一時停止">⏸</button>
+        <span id="zLabel"></span>
+        <button id="zRate" aria-label="再生速度">1×</button>
+        <button id="zClose" aria-label="閉じる">✕</button>
+        <span class="z-credit">VOICEVOX:ずんだもん</span>`;
+      document.body.appendChild(b);
+      b.querySelector("#zToggle").onclick = () => {
+        if (this.el) this.el.paused ? this.el.play() : this.el.pause();
+      };
+      b.querySelector("#zRate").onclick = () => this.cycleRate();
+      b.querySelector("#zClose").onclick = () => this.stop();
+    }
+    if (label !== undefined) b.dataset.label = label;
+    b.style.display = "flex";
+    b.querySelector("#zToggle").textContent =
+      this.el && this.el.paused ? "▶️" : "⏸";
+    b.querySelector("#zRate").textContent = this._rate() + "×";
+    b.querySelector("#zLabel").textContent =
+      "🫛 " + (b.dataset.label || "ずんだもん音声");
+  },
+};
+
+// 読み上げの統一入口: 事前生成のずんだもん音声があればMP3、無ければTTS（内蔵の声）。
+function speakContent(id, fallbackSegs, label) {
+  if (ZAUDIO.has(id)) ZAUDIO.toggle(id, label);
+  else if (TTS.supported) TTS.play(fallbackSegs);
+}
+
 // 解答後の共通フロー: (自信度→) 正誤開示+記録 (→自己説明) → 解説 → 次へ
 // o: { box, kind, id, ok, defLaw, explHtml, reveal(), record(), onNext() }
 function answerFlow(o) {
@@ -986,7 +1081,7 @@ function renderOneFlash(f, ctx) {
   const recall = MODE("recall");
   view.innerHTML = `
     <div class="card">
-      <div class="qhead"><span>${ctx.label}</span><span class="tag">${esc(f.cat)}</span>${ctx.kindTag || ""}${TTS.supported ? '<button class="spk" id="spkBtn" title="読み上げ">🔊</button>' : ""}</div>
+      <div class="qhead"><span>${ctx.label}</span><span class="tag">${esc(f.cat)}</span>${ctx.kindTag || ""}${TTS.supported || ZAUDIO.has("f_" + f.id) ? `<button class="spk" id="spkBtn" title="読み上げ">🔊${ZAUDIO.has("f_" + f.id) ? "🫛" : ""}</button>` : ""}</div>
       <p class="statement" style="min-height:72px"><b>${esc(f.s)}</b></p>
       ${recall ? `<button class="btn ghost" id="recallBtn">🧠 ○か×か・理由まで思い出した → めくる</button>` : ""}
       <div class="btn-row" id="oxRow"${recall ? ' style="display:none"' : ""}>
@@ -1002,13 +1097,14 @@ function renderOneFlash(f, ctx) {
       document.getElementById("recallBtn").style.display = "none";
       document.getElementById("oxRow").style.display = "flex";
     });
-  if (TTS.supported) {
+  {
     const sb = document.getElementById("spkBtn");
+    const segs = [{ text: f.s, label: "問題" }];
     if (sb)
       sb.addEventListener("click", () =>
-        TTS.play([{ text: f.s, label: "問題" }]),
+        speakContent("f_" + f.id, segs, "一問一答"),
       );
-    if (MODE("tts")) TTS.play([{ text: f.s, label: "問題" }]); // 自動読み上げ
+    if (MODE("tts")) speakContent("f_" + f.id, segs, "一問一答"); // 自動読み上げ
   }
   const box = document.getElementById("explBox");
   const answer = (userSaysTrue) => {
@@ -1058,7 +1154,7 @@ function renderOneQuiz(q, ctx) {
   view.innerHTML = `
     ${ctx.topHtml || ""}
     <div class="card">
-      <div class="qhead"><span>${ctx.label}</span><span class="tag">${esc(q.cat)}</span>${ctx.kindTag || ""}${TTS.supported ? '<button class="spk" id="spkBtn" title="読み上げ">🔊</button>' : ""}</div>
+      <div class="qhead"><span>${ctx.label}</span><span class="tag">${esc(q.cat)}</span>${ctx.kindTag || ""}${TTS.supported || ZAUDIO.has("q_" + q.id) ? `<button class="spk" id="spkBtn" title="読み上げ">🔊${ZAUDIO.has("q_" + q.id) ? "🫛" : ""}</button>` : ""}</div>
       <p class="statement"><b>${esc(q.q)}</b></p>
       ${stmtsHtml}
       <div id="choices">
@@ -1081,10 +1177,13 @@ function renderOneQuiz(q, ctx) {
       label: "選択肢" + nums[i],
     })),
   ];
-  if (TTS.supported) {
+  {
     const sb = document.getElementById("spkBtn");
-    if (sb) sb.addEventListener("click", () => TTS.play(readSegs));
-    if (MODE("tts")) TTS.play(readSegs);
+    if (sb)
+      sb.addEventListener("click", () =>
+        speakContent("q_" + q.id, readSegs, "択一"),
+      );
+    if (MODE("tts")) speakContent("q_" + q.id, readSegs, "択一");
   }
   const box = document.getElementById("explBox");
   view.querySelectorAll(".choice").forEach((btn) => {
@@ -3195,6 +3294,8 @@ function applyDisplayPrefs() {
 // 座標系の設定を復元
 CalcUtil.coordMode = localStorage.getItem("calcCoordMode") || "local";
 applyDisplayPrefs();
+// 事前生成のずんだもん音声マニフェストを読み込み（無くてもTTSにフォールバック）
+ZAUDIO.load();
 
 // 初期表示
 render("today");

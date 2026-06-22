@@ -1,5 +1,5 @@
 // オフライン対応 Service Worker
-const CACHE = "chousashi-dojo-v48";
+const CACHE = "chousashi-dojo-v49";
 const ASSETS = [
   "./",
   "./index.html",
@@ -38,11 +38,17 @@ self.addEventListener("activate", (e) => {
 });
 
 self.addEventListener("fetch", (e) => {
+  if (e.request.method !== "GET") return; // GET以外はキャッシュ対象外
   e.respondWith(
     fetch(e.request)
       .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(e.request, copy));
+        // 200の完全応答のみキャッシュ。206(音声シーク等の部分応答)は put が例外になるため除外。
+        if (res && res.status === 200 && res.type === "basic") {
+          const copy = res.clone();
+          caches
+            .open(CACHE)
+            .then((c) => c.put(e.request, copy).catch(() => {}));
+        }
         return res;
       })
       .catch(() => caches.match(e.request)),
