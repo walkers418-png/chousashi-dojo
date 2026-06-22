@@ -16,7 +16,7 @@ const Store = {
     this._cache.written = this._cache.written || {}; // {wid: {done, score}}
     this._cache.days = this._cache.days || []; // ["YYYY-MM-DD", ...] 学習した日
     this._cache.checks = this._cache.checks || {}; // 今日のタスクチェック {date: [bool]}
-    this._cache.srs = this._cache.srs || {}; // {fid: {ef, intv, reps, lapses, due, last}} 間隔反復(SM-2)
+    this._cache.srs = this._cache.srs || {}; // {id: {ef, intv, reps, lapses, due, last}} 間隔反復(SM-2)・一問一答＋択一
     this._cache.srsDaily = this._cache.srsDaily || {}; // {date: 今日導入した新規カード数} 新規キャップ用
     this._cache.calib = this._cache.calib || { co: 0, cx: 0, uo: 0, ux: 0 }; // 自信度×正誤の集計
     this._cache.overconf = this._cache.overconf || {}; // {"quiz:M01": true} 過信（自信あり×不正解）項目
@@ -214,22 +214,38 @@ const Store = {
     return this.load().srs[fid] || null;
   },
 
+  // SRS対象の全カードを {id, kind, item} で返す（一問一答=flash＋択一=quiz）。
+  // FLASHのIDはF接頭辞・択一のIDは非F接頭辞で衝突しないため、srsマップを共用できる。
+  srsPool() {
+    const pool = [];
+    if (typeof FLASH !== "undefined")
+      for (const f of FLASH) pool.push({ id: f.id, kind: "flash", item: f });
+    if (typeof QUESTIONS !== "undefined")
+      for (const q of QUESTIONS) pool.push({ id: q.id, kind: "quiz", item: q });
+    return pool;
+  },
+
   // 期日が来たカード（due<=today）と、まだ未学習の新規カード（日次上限まで）を返す
   srsDueDeck() {
     const d = this.load();
     const today = this.today();
     const due = [];
     const fresh = [];
-    for (const f of FLASH) {
-      const c = d.srs[f.id];
-      if (!c) fresh.push(f);
-      else if (c.due <= today) due.push(f);
+    for (const e of this.srsPool()) {
+      const c = d.srs[e.id];
+      if (!c) fresh.push(e);
+      else if (c.due <= today) due.push(e);
     }
-    // 期日カードはシャッフル（同じ順序での丸暗記を防ぐ）
-    for (let i = due.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [due[i], due[j]] = [due[j], due[i]];
-    }
+    // 期日カード・新規カードともシャッフル。新規はプール順(一問一答→択一)で
+    // 並んでいるため、シャッフルしないと択一が長期間導入されない。両形式を混ぜる。
+    const shuffle = (arr) => {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+    };
+    shuffle(due);
+    shuffle(fresh);
     const introduced = d.srsDaily[today] || 0;
     const room = Math.max(0, this.SRS_NEW_PER_DAY - introduced);
     return { due, newCards: fresh.slice(0, room) };
@@ -241,8 +257,9 @@ const Store = {
     let due = 0;
     let fresh = 0;
     let learned = 0;
-    for (const f of FLASH) {
-      const c = d.srs[f.id];
+    const pool = this.srsPool();
+    for (const e of pool) {
+      const c = d.srs[e.id];
       if (!c) {
         fresh++;
         continue;
@@ -255,15 +272,15 @@ const Store = {
       Math.max(0, this.SRS_NEW_PER_DAY - introduced),
       fresh,
     );
-    return { due, fresh, learned, newAvail, total: FLASH.length };
+    return { due, fresh, learned, newAvail, total: pool.length };
   },
 
   // 直近で期日が来る日付（次の復習がいつかの表示用）
   srsNextDue() {
     const d = this.load();
     let min = null;
-    for (const f of FLASH) {
-      const c = d.srs[f.id];
+    for (const e of this.srsPool()) {
+      const c = d.srs[e.id];
       if (c && (!min || c.due < min)) min = c.due;
     }
     return min;
@@ -306,8 +323,10 @@ const Store = {
     d.srs[fid] = c;
 
     if (isNew) d.srsDaily[today] = (d.srsDaily[today] || 0) + 1;
-    // 既存の一問一答統計にも反映（進捗ページ・弱点抽出との整合）。recordFlashがsave()まで行う。
-    this.recordFlash(fid, quality >= 3);
+    // 既存統計にも反映（進捗・弱点抽出との整合）。F接頭辞=一問一答→recordFlash、
+    // それ以外=択一→recordQuiz。いずれも内部で save() まで行う。
+    if (fid.charAt(0) === "F") this.recordFlash(fid, quality >= 3);
+    else this.recordQuiz(fid, quality >= 3);
     return c;
   },
 

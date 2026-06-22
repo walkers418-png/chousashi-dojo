@@ -1164,17 +1164,61 @@ function renderSrsEmpty() {
 
 function renderSrsCard() {
   const st = srsState;
-  const f = st.deck[st.idx];
-  const isNew = !Store.srsCard(f.id);
+  const entry = st.deck[st.idx];
+  const item = entry.item;
+  const isNew = !Store.srsCard(entry.id);
   const left = st.total - st.idx;
-  view.innerHTML = `
+  const head = `<div class="qhead">
+        <span>🧠 復習 ${st.idx + 1} / ${st.total}</span>
+        <span class="tag">${esc(item.cat)}</span>${entry.kind === "quiz" ? '<span class="tag">択一</span>' : ""}${isNew ? '<span class="tag warn">NEW</span>' : ""}
+      </div>`;
+  const foot = `<p class="muted small" style="text-align:center">残り ${left}枚（うち正解 ${st.good}・要再復習 ${st.again}）</p>`;
+
+  if (entry.kind === "quiz") {
+    const nums = ["1", "2", "3", "4", "5"];
+    const KANA = ["ア", "イ", "ウ", "エ", "オ"];
+    const stmtsHtml = item.stmts
+      ? `<div class="stmts">${item.stmts.map((s, i) => `<div class="stmt"><span class="stmt-mark">${KANA[i]}</span><span>${esc(s)}</span></div>`).join("")}</div>`
+      : "";
+    view.innerHTML = `
     <button class="back" id="backBtn">← 復習をやめる</button>
     <div class="card">
-      <div class="qhead">
-        <span>🧠 復習 ${st.idx + 1} / ${st.total}</span>
-        <span class="tag">${esc(f.cat)}</span>${isNew ? '<span class="tag warn">NEW</span>' : ""}
+      ${head}
+      <p class="statement"><b>${esc(item.q)}</b></p>
+      ${stmtsHtml}
+      <div id="choices">
+        ${item.choices.map((c, i) => `<button class="choice" data-i="${i}"><span class="cnum">${nums[i]}</span>${esc(c)}</button>`).join("")}
       </div>
-      <p class="statement" style="min-height:72px"><b>${esc(f.s)}</b></p>
+      <div id="explBox"></div>
+      <div id="gradeBox"></div>
+    </div>
+    ${foot}`;
+    if (item.stmts)
+      linkArticlesInElement(
+        view.querySelector(".stmts"),
+        defLawForCat(item.cat),
+      );
+    view.querySelectorAll(".choice").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        const i = Number(btn.dataset.i);
+        const ok = i === item.answer;
+        view.querySelectorAll(".choice").forEach((b, bi) => {
+          b.disabled = true;
+          if (bi === item.answer) b.classList.add("correct");
+          else if (bi === i && !ok) b.classList.add("wrong");
+        });
+        const box = document.getElementById("explBox");
+        box.innerHTML = `<div class="expl"><b>${ok ? "正解！" : "不正解"}</b> 正答は ${item.answer + 1}。<br>${item.expl}</div>`;
+        linkArticlesInElement(box, defLawForCat(item.cat));
+        renderSrsGrade(entry, ok);
+      }),
+    );
+  } else {
+    view.innerHTML = `
+    <button class="back" id="backBtn">← 復習をやめる</button>
+    <div class="card">
+      ${head}
+      <p class="statement" style="min-height:72px"><b>${esc(item.s)}</b></p>
       <div class="btn-row" id="oxRow">
         <button class="btn" id="oxO" style="font-size:24px;background:var(--surface2);border:1px solid var(--border);color:var(--ok)">○</button>
         <button class="btn" id="oxX" style="font-size:24px;background:var(--surface2);border:1px solid var(--border);color:var(--ng)">×</button>
@@ -1182,24 +1226,28 @@ function renderSrsCard() {
       <div id="explBox"></div>
       <div id="gradeBox"></div>
     </div>
-    <p class="muted small" style="text-align:center">残り ${left}枚（うち正解 ${st.good}・要再復習 ${st.again}）</p>`;
-
-  const answer = (userSaysTrue) => {
-    const ok = userSaysTrue === f.a;
-    document.getElementById("oxO").disabled = true;
-    document.getElementById("oxX").disabled = true;
-    document.getElementById(f.a ? "oxO" : "oxX").style.borderColor =
-      "var(--ok)";
-    document.getElementById("explBox").innerHTML =
-      `<div class="expl"><b>${ok ? "正解！" : "不正解"}</b> 答えは <b>${f.a ? "○" : "×"}</b><br>${f.expl}</div>`;
-    linkArticlesInElement(
-      document.getElementById("explBox"),
-      defLawForCat(f.cat),
-    );
-    renderSrsGrade(f, ok);
-  };
-  document.getElementById("oxO").addEventListener("click", () => answer(true));
-  document.getElementById("oxX").addEventListener("click", () => answer(false));
+    ${foot}`;
+    const answer = (userSaysTrue) => {
+      const ok = userSaysTrue === item.a;
+      document.getElementById("oxO").disabled = true;
+      document.getElementById("oxX").disabled = true;
+      document.getElementById(item.a ? "oxO" : "oxX").style.borderColor =
+        "var(--ok)";
+      document.getElementById("explBox").innerHTML =
+        `<div class="expl"><b>${ok ? "正解！" : "不正解"}</b> 答えは <b>${item.a ? "○" : "×"}</b><br>${item.expl}</div>`;
+      linkArticlesInElement(
+        document.getElementById("explBox"),
+        defLawForCat(item.cat),
+      );
+      renderSrsGrade(entry, ok);
+    };
+    document
+      .getElementById("oxO")
+      .addEventListener("click", () => answer(true));
+    document
+      .getElementById("oxX")
+      .addEventListener("click", () => answer(false));
+  }
   document.getElementById("backBtn").addEventListener("click", () => {
     srsState = null;
     gotoTab("today");
@@ -1207,7 +1255,7 @@ function renderSrsCard() {
 }
 
 // 解答後の自己評価。間違いは自動でラプス、正解なら難易度を3段階で自己申告して次回間隔を決める。
-function renderSrsGrade(f, ok) {
+function renderSrsGrade(entry, ok) {
   const box = document.getElementById("gradeBox");
   const dayLabel = (n) => (n === 1 ? "明日" : `${n}日後`);
   if (!ok) {
@@ -1215,7 +1263,7 @@ function renderSrsGrade(f, ok) {
       <p class="srs-next">❌ ${dayLabel(1)}にもう一度出題されます</p>
       <button class="btn" id="srsNext">次へ →</button>`;
     document.getElementById("srsNext").addEventListener("click", () => {
-      Store.srsReview(f.id, 1);
+      Store.srsReview(entry.id, 1);
       advanceSrs(false);
     });
     return;
@@ -1231,13 +1279,13 @@ function renderSrsGrade(f, ok) {
       ${grades
         .map(
           (g) =>
-            `<button class="btn ${g.cls}" data-q="${g.q}">${g.label}<small>${dayLabel(Store.srsPreview(f.id, g.q))}</small></button>`,
+            `<button class="btn ${g.cls}" data-q="${g.q}">${g.label}<small>${dayLabel(Store.srsPreview(entry.id, g.q))}</small></button>`,
         )
         .join("")}
     </div>`;
   box.querySelectorAll("[data-q]").forEach((btn) =>
     btn.addEventListener("click", () => {
-      Store.srsReview(f.id, Number(btn.dataset.q));
+      Store.srsReview(entry.id, Number(btn.dataset.q));
       advanceSrs(true);
     }),
   );
