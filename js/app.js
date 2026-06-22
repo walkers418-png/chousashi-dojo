@@ -196,10 +196,21 @@ function defLawForCat(cat) {
 }
 
 function artKey(prefix, num, sub, defLaw) {
-  const code = prefix ? LAW_ALIAS[prefix] : defLaw;
-  if (!code) return null;
-  const key = code + num + (sub ? "の" + sub : "");
-  return typeof ARTICLES !== "undefined" && ARTICLES[key] ? key : null;
+  const has = (k) => typeof ARTICLES !== "undefined" && !!ARTICLES[k];
+  const suffix = num + (sub ? "の" + sub : "");
+  // 接頭辞ありはその法令で厳密に判定
+  if (prefix) {
+    const k = LAW_ALIAS[prefix] + suffix;
+    return has(k) ? k : null;
+  }
+  if (!defLaw) return null;
+  // 接頭辞なし: 既定法令→民法→不登法 の順でフォールバック。
+  // 「不登法の章で 177条」のような取り違え参照を、実在する条文（民法177）へ救済する。
+  for (const code of [defLaw, "民法", "不登法"]) {
+    const k = code + suffix;
+    if (has(k)) return k;
+  }
+  return null;
 }
 
 // 要素内のテキストノードを走査し、辞書にある条文参照だけをタップ可能spanに変換
@@ -239,6 +250,26 @@ function linkArticlesInElement(root, defLaw) {
       textNode.parentNode.replaceChild(frag, textNode);
     }
   }
+}
+
+// SVG図解内の <text> はspan挿入で壊れるため、要素自体をタップ可能にする（属性のみ付与）。
+// 1つの <text> が複数条文を含む場合は最初の参照の吹き出しを開く。
+function linkArticlesInSvg(root, defLaw) {
+  if (!root || typeof ARTICLES === "undefined") return;
+  root.querySelectorAll("svg text").forEach((t) => {
+    if (t.dataset.art) return;
+    ARTICLE_RE.lastIndex = 0;
+    let m;
+    while ((m = ARTICLE_RE.exec(t.textContent))) {
+      const key = artKey(m[1], m[2], m[3], defLaw);
+      if (key) {
+        t.classList.add("artlink");
+        t.dataset.art = key;
+        break;
+      }
+    }
+    ARTICLE_RE.lastIndex = 0;
+  });
 }
 
 function showArticlePopup(key) {
@@ -345,6 +376,7 @@ function renderPattern(id) {
       <button class="btn ghost" id="patAuto">▶ 自動再生</button>
     </div>`;
   linkArticlesInElement(view.querySelector(".lecture-body"), patLaw);
+  linkArticlesInSvg(view, patLaw);
   const svg = view.querySelector(".pat-stage svg");
   const narr = document.getElementById("patNarr");
   const bar = document.getElementById("patBar");
@@ -600,6 +632,7 @@ function renderLecture(id) {
     </div>`;
   const body = view.querySelector(".lecture-body");
   linkArticlesInElement(body, defLawForCat(l.cat));
+  linkArticlesInSvg(body, defLawForCat(l.cat));
   if (TTS.supported) {
     const ls = document.getElementById("lecSpk");
     // 講義タイトル＋本文を文ごとに分割して「音楽プレーヤー」風に聴ける
@@ -1785,10 +1818,14 @@ function solveLinear(A, b) {
   return M.map((row, i) => row[n] / row[i]);
 }
 
-function renderCalculator(mode) {
+// 電卓の描画先（フルページの view か、計算問題に重ねるオーバーレイ）。
+// calcBody* / wireKeypad はこの calcHost を基準に DOM を引く。
+let calcHost = null;
+function renderCalculator(mode, host, embedded) {
+  calcHost = host || view;
   mode = mode || "std";
-  view.innerHTML = `
-    <button class="back" id="backBtn">← 計算道場メニュー</button>
+  calcHost.innerHTML = `
+    ${embedded ? "" : '<button class="back" id="backBtn">← 計算道場メニュー</button>'}
     <h2 style="font-size:15px;margin:4px">関数電卓</h2>
     <div class="seg seg-wide" id="calcModeSeg" style="margin:2px 4px 10px">
       <button data-mode="std" class="${mode === "std" ? "active" : ""}">標準</button>
@@ -1796,15 +1833,39 @@ function renderCalculator(mode) {
       <button data-mode="eqn" class="${mode === "eqn" ? "active" : ""}">連立方程式</button>
     </div>
     <div id="calcBody"></div>`;
-  document.getElementById("backBtn").addEventListener("click", renderCalcMenu);
-  view
+  if (!embedded)
+    document
+      .getElementById("backBtn")
+      .addEventListener("click", renderCalcMenu);
+  calcHost
     .querySelectorAll("#calcModeSeg button")
     .forEach((b) =>
-      b.addEventListener("click", () => renderCalculator(b.dataset.mode)),
+      b.addEventListener("click", () =>
+        renderCalculator(b.dataset.mode, calcHost, embedded),
+      ),
     );
   if (mode === "cmplx") calcBodyCmplx();
   else if (mode === "eqn") calcBodyEqn(2);
   else calcBodyStd();
+}
+
+// 電卓をオーバーレイで開く（計算問題・記述式を解きながら使える）
+function openCalcOverlay() {
+  let ov = document.getElementById("calcOverlay");
+  if (!ov) {
+    ov = document.createElement("div");
+    ov.id = "calcOverlay";
+    ov.innerHTML = `<div class="calc-modal"><button class="calc-modal-close" id="calcOvClose" aria-label="閉じる">×</button><div id="calcModalBody"></div></div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener("click", (e) => {
+      if (e.target === ov) ov.style.display = "none";
+    });
+    document
+      .getElementById("calcOvClose")
+      .addEventListener("click", () => (ov.style.display = "none"));
+  }
+  ov.style.display = "flex";
+  renderCalculator("std", document.getElementById("calcModalBody"), true);
 }
 
 // 共通: 表示式を組み立てるキーパッドの配線（評価関数は呼び出し側が渡す）
@@ -1977,12 +2038,12 @@ function calcBodyCmplx() {
     res.innerHTML = `直交 X,Y: <b>${f.rect}</b><br>極 r∠θ: <b>${f.r} ∠ ${f.theta}°</b>　<span class="muted">(${f.dms})</span>`;
     disp.value = f.rect;
   });
-  view.querySelectorAll(".optn-row [data-fn]").forEach((b) =>
+  calcHost.querySelectorAll(".optn-row [data-fn]").forEach((b) =>
     b.addEventListener("click", () => {
       document.getElementById("calcDisp").value += b.dataset.fn;
     }),
   );
-  view
+  calcHost
     .querySelectorAll(".optn-row [data-conv]")
     .forEach((b) =>
       b.addEventListener("click", () => cmplxConvert(b.dataset.conv)),
@@ -2033,7 +2094,7 @@ function calcBodyEqn(n) {
       <div id="eqnOut" class="expl" style="display:none"></div>
       <button class="btn ghost" id="eqnToDms" style="display:none;margin-top:8px">答えを度分秒に変換</button>
     </div>`;
-  view
+  calcHost
     .querySelectorAll("#eqnNSeg button")
     .forEach((b) =>
       b.addEventListener("click", () => calcBodyEqn(+b.dataset.n)),
@@ -2241,8 +2302,10 @@ function renderCalcProblem(type) {
       <div class="btn-row">
         <button class="btn secondary" id="nextProb">次の問題</button>
       </div>
-    </div>`;
+    </div>
+    <button class="calc-fab" id="calcFab" title="電卓を開く">🔢</button>`;
   document.getElementById("backBtn").addEventListener("click", renderCalcMenu);
+  document.getElementById("calcFab").addEventListener("click", openCalcOverlay);
   document
     .getElementById("nextProb")
     .addEventListener("click", () => renderCalcProblem(type));
@@ -2364,8 +2427,10 @@ function renderWritten(id, opts) {
       ${formHtml}
       <button class="btn" id="gradeBtn">採点する</button>
       <div id="wResult"></div>
-    </div>`;
+    </div>
+    <button class="calc-fab" id="calcFab" title="電卓を開く">🔢</button>`;
 
+  document.getElementById("calcFab").addEventListener("click", openCalcOverlay);
   drawFigure(w.figure, 0);
   // 問題文・申請書ヒント中の条文をタップ可能に（土地/建物/区分建物→不登法を既定法令とする）
   linkArticlesInElement(view, defLawForCat(w.type));
