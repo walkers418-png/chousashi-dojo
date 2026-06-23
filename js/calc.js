@@ -258,15 +258,29 @@ const CalcGen = {
       const a = ((bx - ax) * Math.sin(t2) - (by - ay) * Math.cos(t2)) / det;
       const px = ax + a * Math.cos(t1),
         py = ay + a * Math.sin(t1);
+      // 複素数法の表示用: A→Bの距離 S_AB と方向角 T_AB
+      const sab = Math.hypot(bx - ax, by - ay);
+      const tab =
+        ((((Math.atan2(by - ay, bx - ax) * 180) / Math.PI) % 360) + 360) % 360;
       return {
         html: `<p>点A(X=${U.dispX(ax)}, Y=${U.dispY(ay)}) を通り方向角 <b>${d1}°00′00″</b> の直線と、点B(X=${U.dispX(bx)}, Y=${U.dispY(by)}) を通り方向角 <b>${d2}°00′00″</b> の直線との交点Pの座標を求めよ（小数第3位）。</p>`,
         fields: [
           { label: "PのX座標", kind: "num", answer: U.ansX(px), tol: 0.02 },
           { label: "PのY座標", kind: "num", answer: U.ansY(py), tol: 0.02 },
         ],
-        solution: `<p>AからPまでの距離a＝{(Y<sub>B</sub>−Y<sub>A</sub>)cosT<sub>B</sub>−(X<sub>B</sub>−X<sub>A</sub>)sinT<sub>B</sub>}÷sin(T<sub>A</sub>−T<sub>B</sub>)＝<b>${a.toFixed(3)}m</b></p>
-<p>P＝A＋a∠T<sub>A</sub> ⟹ X=<b>${U.dispX(px)}</b>、Y=<b>${U.dispY(py)}</b></p>
-<p class="muted small">検算: Bから方向角${d2}°の直線にPを当てて一致確認。詳しくは「計算手法ガイド」へ。</p>`,
+        solution: `<p><b>【連立方程式（媒介変数）法】</b></p>
+<p>直線1上の点＝A＋a∠T<sub>A</sub>、直線2上の点＝B＋b∠T<sub>B</sub> が一致するとして連立（a,bは各点からの距離）:</p>
+<p class="formula">X<sub>A</sub>＋a·cosT<sub>A</sub> ＝ X<sub>B</sub>＋b·cosT<sub>B</sub><br>Y<sub>A</sub>＋a·sinT<sub>A</sub> ＝ Y<sub>B</sub>＋b·sinT<sub>B</sub></p>
+<p>a について解く（クラメルの公式）:</p>
+<p class="formula">a ＝ {(Y<sub>B</sub>−Y<sub>A</sub>)cosT<sub>B</sub>−(X<sub>B</sub>−X<sub>A</sub>)sinT<sub>B</sub>} ÷ sin(T<sub>A</sub>−T<sub>B</sub>) ＝ <b>${a.toFixed(3)}m</b></p>
+<p>P ＝ A＋a∠T<sub>A</sub> ⟹ X=<b>${U.dispX(px)}</b>、Y=<b>${U.dispY(py)}</b></p>
+<hr class="sep">
+<p><b>【複素数（fx-JP500）法】</b> 点を A＝X<sub>A</sub>＋Y<sub>A</sub>i、B＝X<sub>B</sub>＋Y<sub>B</sub>i で表す（<b>実部=X(北)・虚部=Y(東)・∠=方向角</b>）。</p>
+<p>① (B−A) を <b>►r∠θ</b> で極形式に ⟹ S<sub>AB</sub>＝<b>${sab.toFixed(3)}m</b> ∠ T<sub>AB</sub>＝<b>${tab.toFixed(4)}°</b></p>
+<p>② 正弦定理より AP（＝a）を求める:</p>
+<p class="formula">AP ＝ S<sub>AB</sub>·sin(T<sub>AB</sub>−T<sub>B</sub>) ÷ sin(T<sub>A</sub>−T<sub>B</sub>) ＝ <b>${a.toFixed(3)}m</b></p>
+<p>③ P ＝ A＋AP∠T<sub>A</sub> を <b>►a+bi</b> で直交形式に ⟹ X=<b>${U.dispX(px)}</b>、Y=<b>${U.dispY(py)}</b></p>
+<p class="muted small">2法は同じ a（AP）に帰着する（連立で出た式に X<sub>B</sub>−X<sub>A</sub>=S<sub>AB</sub>cosT<sub>AB</sub>・Y<sub>B</sub>−Y<sub>A</sub>=S<sub>AB</sub>sinT<sub>AB</sub> を代入すると複素数法の式になる）。検算: Bから方向角${d2}°の直線にPが乗るか確認。</p>`,
       };
     },
   },
