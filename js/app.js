@@ -1707,34 +1707,52 @@ function renderFullMockResult() {
 // ─────────── 計算道場 ───────────
 // 関数電卓の安全な式評価。ボタンで組んだ式（÷×−√π・sin/cos/tan）だけを受け付ける。
 // 三角関数は度。許可文字以外が混じる式は null（評価しない）。
-function evalCalc(disp) {
+// 標準モードの式評価。三角関数・逆三角関数(度)・√・abs・π・Ans(前回値)に対応。
+// 安全のため文字をホワイトリストで限定し new Function に関数だけを渡す（evalは使わない）。
+function evalCalc(disp, ans) {
   let e = disp
     .replace(/÷/g, "/")
     .replace(/×/g, "*")
     .replace(/−/g, "-")
     .replace(/√/g, "SQRT")
     .replace(/π/g, "PI")
+    .replace(/Ans/g, "ANS")
+    .replace(/asin/g, "ASIN") // 逆三角は sin/cos/tan より先に置換
+    .replace(/acos/g, "ACOS")
+    .replace(/atan/g, "ATAN")
     .replace(/sin/g, "SIN")
     .replace(/cos/g, "COS")
-    .replace(/tan/g, "TAN");
+    .replace(/tan/g, "TAN")
+    .replace(/abs/g, "ABS");
   if (!e.trim()) return null;
-  // 数字・小数点・四則・括弧・空白と、置換後の関数名の文字(SINCOTAQRP)のみ許可
-  if (/[^0-9.+\-*/()\sSINCOTAQRP]/.test(e)) return null;
+  // 数字・小数点・四則・括弧・空白と、置換後の関数名の文字(SQRTPINCOAB)のみ許可
+  if (/[^0-9.+\-*/()\sSQRTPINCOAB]/.test(e)) return null;
   try {
     const f = new Function(
       "SIN",
       "COS",
       "TAN",
+      "ASIN",
+      "ACOS",
+      "ATAN",
       "SQRT",
+      "ABS",
       "PI",
+      "ANS",
       '"use strict";return (' + e + ");",
     );
+    const D = Math.PI / 180;
     const r = f(
-      (x) => Math.sin((x * Math.PI) / 180),
-      (x) => Math.cos((x * Math.PI) / 180),
-      (x) => Math.tan((x * Math.PI) / 180),
+      (x) => Math.sin(x * D),
+      (x) => Math.cos(x * D),
+      (x) => Math.tan(x * D),
+      (x) => Math.asin(x) / D,
+      (x) => Math.acos(x) / D,
+      (x) => Math.atan(x) / D,
       Math.sqrt,
+      Math.abs,
       Math.PI,
+      ans || 0,
     );
     return typeof r === "number" && isFinite(r) ? r : null;
   } catch (_) {
@@ -1917,9 +1935,46 @@ function solveLinear(A, b) {
   return M.map((row, i) => row[n] / row[i]);
 }
 
-// 電卓の描画先（フルページの view か、計算問題に重ねるオーバーレイ）。
+// 電卓の描画先（フルページの view か、計算問題の下に出すインライン枠）。
 // calcBody* / wireKeypad はこの calcHost を基準に DOM を引く。
 let calcHost = null;
+let calcAns = 0; // 直近の計算結果（Ans）
+let calcMem = 0; // 独立メモリ（M+/M-/MR/MC）
+
+// トップレベルのカンマで引数を分割（Pol/Rec の2引数用）
+function splitTopArgs(s) {
+  let depth = 0,
+    cur = "",
+    out = [];
+  for (const ch of s) {
+    if (ch === "(") depth++;
+    else if (ch === ")") depth--;
+    if (ch === "," && depth === 0) {
+      out.push(cur);
+      cur = "";
+    } else cur += ch;
+  }
+  out.push(cur);
+  return out;
+}
+
+// 計算問題・記述式の「下」に電卓をインライン表示／非表示する（問題文を隠さない）
+function toggleInlineCalc() {
+  const c = document.getElementById("calcInline");
+  if (!c) return;
+  const fab = document.getElementById("calcFab");
+  if (c.dataset.open === "1") {
+    c.innerHTML = "";
+    c.dataset.open = "0";
+    if (fab) fab.textContent = "🔢";
+  } else {
+    renderCalculator("std", c, true);
+    c.dataset.open = "1";
+    if (fab) fab.textContent = "🔽";
+    c.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+}
+
 function renderCalculator(mode, host, embedded) {
   calcHost = host || view;
   mode = mode || "std";
@@ -2018,10 +2073,26 @@ function calcBodyStd() {
   ];
   const ops = ["÷", "×", "−", "+"];
   document.getElementById("calcBody").innerHTML = `
-    <p class="muted small" style="margin:0 4px 10px"><b>三角関数は度(°)</b>で計算します（例: sin(30) = 0.5）。</p>
+    <p class="muted small" style="margin:0 4px 8px"><b>三角関数は度(°)</b>。<b>Pol</b>(ΔX,ΔY)=距離・方向角／<b>Rec</b>(距離,方向角)=ΔX,ΔY／<b>Ans</b>=前回値／<b>M</b>=メモリ。</p>
     <div class="card">
       <input type="text" id="calcDisp" class="calc-disp" readonly value="" aria-label="式">
       <div id="calcRes" class="calc-res"></div>
+      <div id="calcMemInd" class="calc-mem"></div>
+      <div class="optn-row" id="fnRow">
+        <button class="chip" data-ins="Pol(">Pol(</button>
+        <button class="chip" data-ins="Rec(">Rec(</button>
+        <button class="chip" data-ins="abs(">Abs(</button>
+        <button class="chip" data-ins="asin(">sin⁻¹(</button>
+        <button class="chip" data-ins="acos(">cos⁻¹(</button>
+        <button class="chip" data-ins="atan(">tan⁻¹(</button>
+      </div>
+      <div class="optn-row" id="memRow">
+        <button class="chip" data-ins="Ans">Ans</button>
+        <button class="chip" data-mem="M+">M+</button>
+        <button class="chip" data-mem="M-">M−</button>
+        <button class="chip" data-mem="MR">MR</button>
+        <button class="chip" data-mem="MC">MC</button>
+      </div>
       <div class="calc-pad">
         ${KEYS.map((k) => `<button class="calc-key${k === "=" ? " eq" : ""}${ops.includes(k) ? " op" : ""}${["sin", "cos", "tan", "√", "π"].includes(k) ? " fn" : ""}" data-k="${k}">${k}</button>`).join("")}
       </div>
@@ -2038,15 +2109,71 @@ function calcBodyStd() {
       <button class="btn secondary" id="toDms" style="margin-top:2px">十進度 → 度分秒</button>
       <div id="dmsOut" class="expl" style="display:none"></div>
     </div>`;
+  const updMem = () => {
+    const ind = document.getElementById("calcMemInd");
+    if (ind) ind.textContent = calcMem !== 0 ? "M = " + fmtNum(calcMem) : "";
+  };
+  updMem();
   wireKeypad((disp, res) => {
-    const r = evalCalc(disp.value);
+    const v = disp.value.trim();
+    const pol = v.match(/^Pol\((.+)\)$/);
+    const rec = v.match(/^Rec\((.+)\)$/);
+    if (pol || rec) {
+      const args = splitTopArgs((pol || rec)[1]);
+      if (args.length !== 2) {
+        res.textContent = "Pol/Rec は値が2つ必要です";
+        return;
+      }
+      const A = evalCalc(args[0], calcAns),
+        B = evalCalc(args[1], calcAns);
+      if (A === null || B === null) {
+        res.textContent = "式を確認してください";
+        return;
+      }
+      const D = Math.PI / 180;
+      if (pol) {
+        const r = Math.hypot(A, B);
+        const th = ((((Math.atan2(B, A) * 180) / Math.PI) % 360) + 360) % 360;
+        calcAns = r;
+        res.innerHTML = `r（距離）= <b>${fmtNum(r)}</b><br>θ（方向角）= <b>${fmtNum(th)}°</b> <span class="muted">(${degToDms(th)})</span>`;
+        disp.value = fmtNum(r);
+      } else {
+        const x = A * Math.cos(B * D),
+          y = A * Math.sin(B * D);
+        calcAns = x;
+        res.innerHTML = `ΔX（北）= <b>${fmtNum(x)}</b><br>ΔY（東）= <b>${fmtNum(y)}</b>`;
+        disp.value = fmtNum(x);
+      }
+      return;
+    }
+    const r = evalCalc(disp.value, calcAns);
     if (r === null) {
       res.textContent = "式を確認してください";
     } else {
       res.textContent = "= " + fmtNum(r);
+      calcAns = r;
       disp.value = fmtNum(r);
     }
   });
+  // 機能チップ(挿入) と メモリチップ(M+/M-/MR/MC)
+  calcHost.querySelectorAll(".optn-row [data-ins]").forEach((b) =>
+    b.addEventListener("click", () => {
+      document.getElementById("calcDisp").value += b.dataset.ins;
+    }),
+  );
+  calcHost.querySelectorAll(".optn-row [data-mem]").forEach((b) =>
+    b.addEventListener("click", () => {
+      const disp = document.getElementById("calcDisp");
+      const m = b.dataset.mem;
+      if (m === "MC") calcMem = 0;
+      else if (m === "MR") disp.value += fmtNum(calcMem);
+      else {
+        const val = evalCalc(disp.value, calcAns);
+        if (val !== null) calcMem += m === "M+" ? val : -val;
+      }
+      updMem();
+    }),
+  );
   document.getElementById("ansToDms").addEventListener("click", () => {
     const disp = document.getElementById("calcDisp");
     const res = document.getElementById("calcRes");
@@ -2402,9 +2529,12 @@ function renderCalcProblem(type) {
         <button class="btn secondary" id="nextProb">次の問題</button>
       </div>
     </div>
-    <button class="calc-fab" id="calcFab" title="電卓を開く">🔢</button>`;
+    <div id="calcInline" data-open="0"></div>
+    <button class="calc-fab" id="calcFab" title="電卓の表示／非表示">🔢</button>`;
   document.getElementById("backBtn").addEventListener("click", renderCalcMenu);
-  document.getElementById("calcFab").addEventListener("click", openCalcOverlay);
+  document
+    .getElementById("calcFab")
+    .addEventListener("click", toggleInlineCalc);
   document
     .getElementById("nextProb")
     .addEventListener("click", () => renderCalcProblem(type));
@@ -2527,9 +2657,12 @@ function renderWritten(id, opts) {
       <button class="btn" id="gradeBtn">採点する</button>
       <div id="wResult"></div>
     </div>
-    <button class="calc-fab" id="calcFab" title="電卓を開く">🔢</button>`;
+    <div id="calcInline" data-open="0"></div>
+    <button class="calc-fab" id="calcFab" title="電卓の表示／非表示">🔢</button>`;
 
-  document.getElementById("calcFab").addEventListener("click", openCalcOverlay);
+  document
+    .getElementById("calcFab")
+    .addEventListener("click", toggleInlineCalc);
   drawFigure(w.figure, 0);
   // 問題文・申請書ヒント中の条文をタップ可能に（土地/建物/区分建物→不登法を既定法令とする）
   linkArticlesInElement(view, defLawForCat(w.type));
