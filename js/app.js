@@ -1707,27 +1707,36 @@ function renderFullMockResult() {
 // ─────────── 計算道場 ───────────
 // 関数電卓の安全な式評価。ボタンで組んだ式（÷×−√π・sin/cos/tan）だけを受け付ける。
 // 三角関数は度。許可文字以外が混じる式は null（評価しない）。
-// 標準モードの式評価。三角関数・逆三角関数(度)・√・abs・π・Ans(前回値)に対応。
-// 安全のため文字をホワイトリストで限定し new Function に関数だけを渡す（evalは使わない）。
+// 標準モードの式評価（fx-JP500相当）。三角・逆三角(度)・√・³√・累乗(^)・log/ln・
+// abs・π・Ans(前回値)・変数(A〜F,X,Y,M)に対応。安全のため文字をホワイトリストで
+// 限定し、関数と変数値だけを new Function に渡す（evalは使わない）。
 function evalCalc(disp, ans) {
   let e = disp
     .replace(/÷/g, "/")
     .replace(/×/g, "*")
     .replace(/−/g, "-")
+    .replace(/³√/g, "CBRT") // ³√ は √→SQRT より先に処理
     .replace(/√/g, "SQRT")
     .replace(/π/g, "PI")
     .replace(/Ans/g, "ANS")
+    .replace(/\^/g, "**") // 累乗
     .replace(/asin/g, "ASIN") // 逆三角は sin/cos/tan より先に置換
     .replace(/acos/g, "ACOS")
     .replace(/atan/g, "ATAN")
     .replace(/sin/g, "SIN")
     .replace(/cos/g, "COS")
     .replace(/tan/g, "TAN")
-    .replace(/abs/g, "ABS");
+    .replace(/abs/g, "ABS")
+    .replace(/log/g, "LOG")
+    .replace(/ln/g, "LN")
+    .replace(/exp/g, "EXP");
+  // 暗黙の乗算: 数字→英字/( 、)→英数字/( に × を補う（2A, 2(, )(等）
+  e = e.replace(/(\d)([A-Z(])/g, "$1*$2").replace(/(\))([A-Z0-9(])/g, "$1*$2");
   if (!e.trim()) return null;
-  // 数字・小数点・四則・括弧・空白と、置換後の関数名の文字(SQRTPINCOAB)のみ許可
-  if (/[^0-9.+\-*/()\sSQRTPINCOAB]/.test(e)) return null;
+  // 数字・小数点・四則・累乗・括弧・空白・大文字英字のみ許可（小文字は置換漏れとして拒否）
+  if (/[^0-9.+\-*/()\sA-Z]/.test(e)) return null;
   try {
+    const V = calcVars;
     const f = new Function(
       "SIN",
       "COS",
@@ -1736,9 +1745,22 @@ function evalCalc(disp, ans) {
       "ACOS",
       "ATAN",
       "SQRT",
+      "CBRT",
       "ABS",
+      "LOG",
+      "LN",
+      "EXP",
       "PI",
       "ANS",
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F",
+      "X",
+      "Y",
+      "M",
       '"use strict";return (' + e + ");",
     );
     const D = Math.PI / 180;
@@ -1750,9 +1772,22 @@ function evalCalc(disp, ans) {
       (x) => Math.acos(x) / D,
       (x) => Math.atan(x) / D,
       Math.sqrt,
+      Math.cbrt,
       Math.abs,
+      Math.log10,
+      Math.log,
+      Math.exp,
       Math.PI,
       ans || 0,
+      V.A,
+      V.B,
+      V.C,
+      V.D,
+      V.E,
+      V.F,
+      V.X,
+      V.Y,
+      V.M,
     );
     return typeof r === "number" && isFinite(r) ? r : null;
   } catch (_) {
@@ -1807,7 +1842,7 @@ function evalCx(str) {
     .replace(/÷/g, "/")
     .replace(/−/g, "-")
     .replace(/π/g, String(Math.PI));
-  const toks = s.match(/Conjg|Re|Im|\d+\.?\d*|\.\d+|[+\-*/()i∠]/g);
+  const toks = s.match(/Conjg|Arg|Abs|Re|Im|\d+\.?\d*|\.\d+|[+\-*/()i∠]/g);
   if (!toks) return null;
   let pos = 0;
   const peek = () => toks[pos];
@@ -1874,7 +1909,7 @@ function evalCx(str) {
       const t = (ang.re * Math.PI) / 180;
       return Cx(Math.cos(t), Math.sin(t));
     }
-    if (p === "Conjg" || p === "Re" || p === "Im") {
+    if (["Conjg", "Re", "Im", "Arg", "Abs"].includes(p)) {
       pos++;
       let arg;
       if (peek() === "(") {
@@ -1884,7 +1919,13 @@ function evalCx(str) {
       } else arg = primary();
       if (p === "Conjg") return Cx(arg.re, -arg.im);
       if (p === "Re") return Cx(arg.re, 0);
-      return Cx(arg.im, 0); // Im: 虚部を実数として返す
+      if (p === "Im") return Cx(arg.im, 0); // 虚部を実数として返す
+      if (p === "Abs") return Cx(Math.hypot(arg.re, arg.im), 0); // 絶対値（距離）
+      // Arg: 偏角（度・0〜360の方向角）
+      return Cx(
+        ((((Math.atan2(arg.im, arg.re) * 180) / Math.PI) % 360) + 360) % 360,
+        0,
+      );
     }
     if (isNum(p)) {
       pos++;
@@ -1939,7 +1980,9 @@ function solveLinear(A, b) {
 // calcBody* / wireKeypad はこの calcHost を基準に DOM を引く。
 let calcHost = null;
 let calcAns = 0; // 直近の計算結果（Ans）
-let calcMem = 0; // 独立メモリ（M+/M-/MR/MC）
+// 関数電卓の変数メモリ（fx-JP500相当）。M+/M-/MR/MC は M を操作する。
+let calcVars = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, X: 0, Y: 0, M: 0 };
+let calcStoMode = false; // STO押下後、次に押す変数キーへ保存するモード
 
 // トップレベルのカンマで引数を分割（Pol/Rec の2引数用）
 function splitTopArgs(s) {
@@ -2085,6 +2128,21 @@ function calcBodyStd() {
         <button class="chip" data-ins="asin(">sin⁻¹(</button>
         <button class="chip" data-ins="acos(">cos⁻¹(</button>
         <button class="chip" data-ins="atan(">tan⁻¹(</button>
+        <button class="chip" data-ins="log(">log(</button>
+        <button class="chip" data-ins="ln(">ln(</button>
+      </div>
+      <div class="optn-row" id="powRow">
+        <button class="chip" data-ins="^2">x²</button>
+        <button class="chip" data-ins="^3">x³</button>
+        <button class="chip" data-ins="^">xʸ</button>
+        <button class="chip" data-ins="^(-1)">x⁻¹</button>
+        <button class="chip" data-ins="³√(">³√(</button>
+        <button class="chip" data-ins="10^(">10ˣ</button>
+        <button class="chip" data-ins="exp(">eˣ</button>
+      </div>
+      <div class="optn-row" id="varRow">
+        <button class="chip" id="stoBtn">STO</button>
+        ${["A", "B", "C", "D", "E", "F", "X", "Y", "M"].map((v) => `<button class="chip" data-var="${v}">${v}</button>`).join("")}
       </div>
       <div class="optn-row" id="memRow">
         <button class="chip" data-ins="Ans">Ans</button>
@@ -2109,9 +2167,18 @@ function calcBodyStd() {
       <button class="btn secondary" id="toDms" style="margin-top:2px">十進度 → 度分秒</button>
       <div id="dmsOut" class="expl" style="display:none"></div>
     </div>`;
+  const VARS = ["A", "B", "C", "D", "E", "F", "X", "Y", "M"];
   const updMem = () => {
     const ind = document.getElementById("calcMemInd");
-    if (ind) ind.textContent = calcMem !== 0 ? "M = " + fmtNum(calcMem) : "";
+    if (!ind) return;
+    if (calcStoMode) {
+      ind.textContent = "STO: 保存先の変数キー（A〜M）を押す";
+      return;
+    }
+    const stored = VARS.filter((k) => calcVars[k] !== 0);
+    ind.textContent = stored.length
+      ? stored.map((k) => k + "=" + fmtNum(calcVars[k])).join("  ")
+      : "";
   };
   updMem();
   wireKeypad((disp, res) => {
@@ -2165,13 +2232,40 @@ function calcBodyStd() {
     b.addEventListener("click", () => {
       const disp = document.getElementById("calcDisp");
       const m = b.dataset.mem;
-      if (m === "MC") calcMem = 0;
-      else if (m === "MR") disp.value += fmtNum(calcMem);
+      if (m === "MC") calcVars.M = 0;
+      else if (m === "MR") disp.value += fmtNum(calcVars.M);
       else {
         const val = evalCalc(disp.value, calcAns);
-        if (val !== null) calcMem += m === "M+" ? val : -val;
+        if (val !== null) calcVars.M += m === "M+" ? val : -val;
       }
       updMem();
+    }),
+  );
+  // STO（記憶）と変数キー（A〜F,X,Y,M）。STO後に変数キーで保存、通常は式へ呼び出し。
+  const stoBtn = document.getElementById("stoBtn");
+  if (stoBtn)
+    stoBtn.addEventListener("click", () => {
+      calcStoMode = !calcStoMode;
+      stoBtn.classList.toggle("active", calcStoMode);
+      updMem();
+    });
+  calcHost.querySelectorAll("[data-var]").forEach((b) =>
+    b.addEventListener("click", () => {
+      const disp = document.getElementById("calcDisp");
+      const v = b.dataset.var;
+      if (calcStoMode) {
+        const val = evalCalc(disp.value, calcAns);
+        if (val !== null) {
+          calcVars[v] = val;
+          const res = document.getElementById("calcRes");
+          if (res) res.textContent = v + " ← " + fmtNum(val);
+        }
+        calcStoMode = false;
+        stoBtn.classList.remove("active");
+        updMem();
+      } else {
+        disp.value += v;
+      }
     }),
   );
   document.getElementById("ansToDms").addEventListener("click", () => {
@@ -2244,6 +2338,8 @@ function calcBodyCmplx() {
       <div id="calcRes" class="calc-res"></div>
       <div class="optn-row">
         <button class="chip" data-fn="Conjg(">Conjg(</button>
+        <button class="chip" data-fn="Arg(">Arg(</button>
+        <button class="chip" data-fn="Abs(">Abs(</button>
         <button class="chip" data-fn="Re(">Re(</button>
         <button class="chip" data-fn="Im(">Im(</button>
         <button class="chip" data-conv="polar">▸r∠θ</button>
@@ -2314,8 +2410,18 @@ function calcBodyEqn(n) {
       <button data-n="3" class="${n === 3 ? "active" : ""}">3元</button>
     </div>
     <div class="card">
-      <p class="muted small">各係数を入力して解きます（一次・実数）。空欄は0。係数に <code>sin(30)</code> などの式も入力できます。</p>
+      <p class="muted small">各係数を入力して解きます（一次・実数）。空欄は0。係数欄を選んでから下のボタンで <code>sin(30)</code> 等も入力できます。</p>
       ${rows}
+      <div class="optn-row" id="eqFnRow">
+        <button class="chip" data-eqfn="sin(">sin(</button>
+        <button class="chip" data-eqfn="cos(">cos(</button>
+        <button class="chip" data-eqfn="tan(">tan(</button>
+        <button class="chip" data-eqfn="√(">√(</button>
+        <button class="chip" data-eqfn="π">π</button>
+        <button class="chip" data-eqfn="(">(</button>
+        <button class="chip" data-eqfn=")">)</button>
+        <button class="chip" data-eqfn="/">÷</button>
+      </div>
       <button class="btn" id="eqnSolve">解く</button>
       <div id="eqnOut" class="expl" style="display:none"></div>
       <button class="btn ghost" id="eqnToDms" style="display:none;margin-top:8px">答えを度分秒に変換</button>
@@ -2325,6 +2431,23 @@ function calcBodyEqn(n) {
     .forEach((b) =>
       b.addEventListener("click", () => calcBodyEqn(+b.dataset.n)),
     );
+  // 係数欄の関数ボタン: 最後にフォーカスした入力欄へ挿入する
+  let lastEqIn = null;
+  calcHost.querySelectorAll(".eqn-in").forEach((inp) =>
+    inp.addEventListener("focus", () => {
+      lastEqIn = inp;
+    }),
+  );
+  calcHost.querySelectorAll("#eqFnRow [data-eqfn]").forEach((b) =>
+    b.addEventListener("mousedown", (e) => {
+      e.preventDefault(); // フォーカスを係数欄に残す
+      const inp = lastEqIn || calcHost.querySelector(".eqn-in");
+      if (inp) {
+        inp.value += b.dataset.eqfn;
+        inp.focus();
+      }
+    }),
+  );
   const coef = (id) => {
     const raw = document.getElementById(id).value.trim();
     if (!raw) return 0;

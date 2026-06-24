@@ -453,6 +453,7 @@ html[data-fz="xl"] body { font-size: 19px; }
 /* 複素数モード OPTN 機能チップ */
 .optn-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
 .optn-row .chip { background: var(--surface2); color: var(--accent); border: 1px solid var(--border); border-radius: 8px; padding: 7px 11px; font-size: 12.5px; cursor: pointer; }
+.optn-row .chip.active { background: var(--accent); color: #00121b; font-weight: 700; border-color: var(--accent); }
 /* 連立方程式 */
 .eqn-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 9px 0; }
 .eqn-in { width: 56px; padding: 8px 6px; font-size: 15px; text-align: right; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
