@@ -2663,13 +2663,25 @@ function renderCalcGuide(id) {
         .join("")}`,
     )
     .join('<hr class="sep">');
+  const animHtml = g.anim
+    ? `<div class="pat-stage calc-anim">${g.anim.scene}</div>
+       <div class="pat-progress"><div id="caBar"></div></div>
+       <div class="pat-narr" id="caNarr"></div>
+       <div class="btn-row">
+         <button class="btn secondary" id="caPrev">◀ 戻る</button>
+         <button class="btn" id="caNext">次へ ▶</button>
+       </div>
+       <button class="btn ghost" id="caAuto">▶ 自動再生</button>`
+    : g.figure
+      ? `<canvas class="fig" id="figCanvas" width="640" height="480"></canvas><p class="muted small" style="text-align:center;margin-top:-4px">${esc(g.figCaption || "")}</p>`
+      : "";
   view.innerHTML = `
     <button class="back" id="backBtn">← 計算手法ガイド一覧</button>
     <div class="card">
       <span class="tag">${esc(g.tag)}</span>
       <h2>${esc(g.name)}</h2>
       <div class="lecture-body">${g.intro}</div>
-      ${g.figure ? `<canvas class="fig" id="figCanvas" width="640" height="480"></canvas><p class="muted small" style="text-align:center;margin-top:-4px">${esc(g.figCaption || "")}</p>` : ""}
+      ${animHtml}
       <div class="formula">${g.formula}</div>
       ${casesHtml}
     </div>`;
@@ -2679,7 +2691,64 @@ function renderCalcGuide(id) {
   view
     .querySelectorAll(".lecture-body, .formula")
     .forEach((el) => linkArticlesInElement(el, null));
-  if (g.figure) drawFigure(g.figure, true);
+  if (g.anim) mountCalcAnim(g.anim);
+  else if (g.figure) drawFigure(g.figure, true);
+}
+
+// 計算手法ガイドの座標系アニメ図解を手順送りする（renderPattern と同じ方式）。
+// data-from/data-until を持つSVG要素を、現在の手順で opacity 表示切替する。
+function mountCalcAnim(anim) {
+  const svg = view.querySelector(".calc-anim svg");
+  const narr = document.getElementById("caNarr");
+  const bar = document.getElementById("caBar");
+  const prev = document.getElementById("caPrev");
+  const next = document.getElementById("caNext");
+  const autoBtn = document.getElementById("caAuto");
+  if (!svg || !narr) return;
+  const maxStep = anim.steps.length - 1;
+  let step = 0;
+  let timer = null;
+  function stop() {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+      autoBtn.textContent = "▶ 自動再生";
+    }
+  }
+  function draw() {
+    svg.querySelectorAll("[data-from]").forEach((el) => {
+      const from = +el.dataset.from;
+      const until = el.dataset.until !== undefined ? +el.dataset.until : 99;
+      el.style.transition = "opacity .45s";
+      el.style.opacity = step >= from && step <= until ? "1" : "0";
+    });
+    narr.innerHTML = `<span class="pat-step">手順 ${step + 1} / ${maxStep + 1}</span>${esc(anim.steps[step])}`;
+    bar.style.width = (step / maxStep) * 100 + "%";
+    prev.disabled = step === 0;
+    next.disabled = step === maxStep;
+  }
+  next.addEventListener("click", () => {
+    stop();
+    if (step < maxStep) step++;
+    draw();
+  });
+  prev.addEventListener("click", () => {
+    stop();
+    if (step > 0) step--;
+    draw();
+  });
+  autoBtn.addEventListener("click", () => {
+    if (timer) return stop();
+    if (step === maxStep) step = 0;
+    autoBtn.textContent = "⏸ 停止";
+    draw();
+    timer = setInterval(() => {
+      if (step >= maxStep) return stop();
+      step++;
+      draw();
+    }, 2600);
+  });
+  draw();
 }
 
 function renderCalcProblem(type) {
@@ -3560,9 +3629,10 @@ function switchTabBy(delta) {
         quizState || flashState || mixState || fullMockState || srsState;
       if (hasBack) {
         // 詳細画面: 右=戻る / 左=進む
-        if (right) tap("#backBtn") || tap("#patPrev");
+        if (right) tap("#caPrev") || tap("#backBtn") || tap("#patPrev");
         else
-          tap("#patNext") ||
+          tap("#caNext") ||
+            tap("#patNext") ||
             tap("#nextBtn") ||
             tap("#srsNext") ||
             tap("#nextProb");

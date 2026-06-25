@@ -357,6 +357,12 @@ text.artlink { cursor: pointer; text-decoration: underline; text-decoration-styl
 /* パターン図解（動く図解） */
 .pat-stage { background: #0c1014; border: 1px solid var(--border); border-radius: 12px; padding: 6px; margin: 10px 0; }
 .patsvg { width: 100%; height: auto; display: block; }
+.cxsvg { width: 100%; height: auto; display: block; }
+.calc-anim svg [data-from] { opacity: 0; }
+.cx-legend-box { margin: 8px 0 2px; }
+.cx-legend-box > summary { cursor: pointer; padding: 4px 0; }
+table.simple.cx-legend { font-size: 12px; margin: 6px 0 2px; }
+table.simple.cx-legend td { padding: 4px 7px; }
 .pat-progress { height: 6px; background: var(--surface2); border-radius: 99px; overflow: hidden; margin: 4px 0 8px; }
 .pat-progress > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent-deep), var(--accent)); transition: width .4s; }
 .pat-narr { background: var(--surface2); border-left: 3px solid var(--accent); border-radius: 0 10px 10px 0; padding: 11px 13px; font-size: 14px; line-height: 1.85; min-height: 70px; }
