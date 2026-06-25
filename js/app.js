@@ -1842,11 +1842,14 @@ function evalCx(str) {
     .replace(/÷/g, "/")
     .replace(/−/g, "-")
     .replace(/π/g, String(Math.PI));
-  const toks = s.match(/Conjg|Arg|Abs|Re|Im|\d+\.?\d*|\.\d+|[+\-*/()i∠]/g);
+  const toks = s.match(
+    /Conjg|Arg|Abs|Re|Im|[A-F]|\d+\.?\d*|\.\d+|[+\-*/()i∠]/g,
+  );
   if (!toks) return null;
   let pos = 0;
   const peek = () => toks[pos];
   const isNum = (t) => t && /[\d.]/.test(t[0]);
+  const isVar = (t) => t && /^[A-F]$/.test(t);
   function expr() {
     let v = term();
     while (peek() === "+" || peek() === "-") {
@@ -1864,8 +1867,8 @@ function evalCx(str) {
         pos++;
         const u = unary();
         v = p === "*" ? CxOps.mul(v, u) : CxOps.div(v, u);
-      } else if (p === "(" || p === "i" || isNum(p)) {
-        v = CxOps.mul(v, unary()); // 暗黙の乗算（例: 4i, 2(3+i)）
+      } else if (p === "(" || p === "i" || isNum(p) || isVar(p)) {
+        v = CxOps.mul(v, unary()); // 暗黙の乗算（例: 4i, 2(3+i), 2A, AB）
       } else break;
     }
     return v;
@@ -1902,6 +1905,11 @@ function evalCx(str) {
     if (p === "i") {
       pos++;
       return Cx(0, 1);
+    }
+    if (isVar(p)) {
+      pos++;
+      const v = calcCxVars[p];
+      return Cx(v.re, v.im);
     }
     if (p === "∠") {
       pos++;
@@ -1983,6 +1991,16 @@ let calcAns = 0; // 直近の計算結果（Ans）
 // 関数電卓の変数メモリ（fx-JP500相当）。M+/M-/MR/MC は M を操作する。
 let calcVars = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, X: 0, Y: 0, M: 0 };
 let calcStoMode = false; // STO押下後、次に押す変数キーへ保存するモード
+// 複素数モードの変数（座標を複素数で記憶。4点交点 P=A+(B−A)·t など）
+let calcCxVars = {
+  A: { re: 0, im: 0 },
+  B: { re: 0, im: 0 },
+  C: { re: 0, im: 0 },
+  D: { re: 0, im: 0 },
+  E: { re: 0, im: 0 },
+  F: { re: 0, im: 0 },
+};
+let calcCxStoMode = false;
 
 // トップレベルのカンマで引数を分割（Pol/Rec の2引数用）
 function splitTopArgs(s) {
@@ -2332,10 +2350,11 @@ function calcBodyCmplx() {
   ];
   const ops = ["÷", "×", "−", "+"];
   document.getElementById("calcBody").innerHTML = `
-    <p class="muted small" style="margin:0 4px 10px">カシオ複素数モード相当。<b>X=実部・Y=虚部</b>、<b>∠＝方向角(度)</b>。<br>放射計算: <code>既知点 ＋ 距離∠方向角</code>　逆計算: <code>(新点−既知点)</code> を = して極形式 r∠θ を読む。</p>
+    <p class="muted small" style="margin:0 4px 10px">カシオ複素数モード相当。<b>X=実部・Y=虚部</b>、<b>∠＝方向角(度)</b>。座標は <b>STO→変数(A〜F)</b> に複素数で記憶できる。<br>放射: <code>既知点＋距離∠方向角</code>　逆計算: <code>(新点−既知点)</code>=で r∠θ。<br><b>4点交点</b>(直線AB×CD): A〜Dへ座標を記憶し <code>A+(B−A)×(Im((C−A)/(D−C))/Im((B−A)/(D−C)))</code> を=。</p>
     <div class="card">
       <input type="text" id="calcDisp" class="calc-disp" readonly value="" aria-label="複素数式" placeholder="例: 100+200i + 50∠30">
       <div id="calcRes" class="calc-res"></div>
+      <div id="cxMemInd" class="calc-mem"></div>
       <div class="optn-row">
         <button class="chip" data-fn="Conjg(">Conjg(</button>
         <button class="chip" data-fn="Arg(">Arg(</button>
@@ -2345,6 +2364,10 @@ function calcBodyCmplx() {
         <button class="chip" data-conv="polar">▸r∠θ</button>
         <button class="chip" data-conv="rect">▸a+bi</button>
         <button class="chip" data-conv="dms">→度分秒</button>
+      </div>
+      <div class="optn-row" id="cxVarRow">
+        <button class="chip" id="cxStoBtn">STO</button>
+        ${["A", "B", "C", "D", "E", "F"].map((v) => `<button class="chip" data-cxvar="${v}">${v}</button>`).join("")}
       </div>
       <div class="calc-pad">
         ${KEYS.map((k) => `<button class="calc-key${k === "=" ? " eq3" : ""}${ops.includes(k) ? " op" : ""}${["i", "∠"].includes(k) ? " fn" : ""}" data-k="${k}">${k}</button>`).join("")}
@@ -2370,6 +2393,48 @@ function calcBodyCmplx() {
     .forEach((b) =>
       b.addEventListener("click", () => cmplxConvert(b.dataset.conv)),
     );
+  // 複素数変数 STO（座標記憶）・呼び出し
+  const updCxMem = () => {
+    const ind = document.getElementById("cxMemInd");
+    if (!ind) return;
+    if (calcCxStoMode) {
+      ind.textContent = "STO: 保存先の変数キー（A〜F）を押す";
+      return;
+    }
+    const st = ["A", "B", "C", "D", "E", "F"].filter(
+      (k) => calcCxVars[k].re !== 0 || calcCxVars[k].im !== 0,
+    );
+    ind.textContent = st.length
+      ? st.map((k) => k + "=" + fmtCx(calcCxVars[k]).rect).join("  ／  ")
+      : "";
+  };
+  updCxMem();
+  const cxSto = document.getElementById("cxStoBtn");
+  if (cxSto)
+    cxSto.addEventListener("click", () => {
+      calcCxStoMode = !calcCxStoMode;
+      cxSto.classList.toggle("active", calcCxStoMode);
+      updCxMem();
+    });
+  calcHost.querySelectorAll("[data-cxvar]").forEach((b) =>
+    b.addEventListener("click", () => {
+      const disp = document.getElementById("calcDisp");
+      const v = b.dataset.cxvar;
+      if (calcCxStoMode) {
+        const z = evalCx(disp.value);
+        if (z) {
+          calcCxVars[v] = { re: z.re, im: z.im };
+          const res = document.getElementById("calcRes");
+          if (res) res.innerHTML = v + " ← <b>" + fmtCx(z).rect + "</b>";
+        }
+        calcCxStoMode = false;
+        cxSto.classList.remove("active");
+        updCxMem();
+      } else {
+        disp.value += v;
+      }
+    }),
+  );
 }
 
 // 複素数モードの表示変換（▸r∠θ / ▸a+bi / →度分秒）。現在の式を評価して整形する。

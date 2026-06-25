@@ -498,9 +498,13 @@ const CalcGen = {
           { label: "PのX座標", kind: "num", answer: U.ansX(P[0]), tol: 0.02 },
           { label: "PのY座標", kind: "num", answer: U.ansY(P[1]), tol: 0.02 },
         ],
-        solution: `<p>方向ベクトル r=B−A、s=D−C。 <b>t＝{(C−A)×s} ÷ (r×s)</b>（×は外積）、P＝A＋t·r。</p>
-<p>⟹ <b>P(${U.dispX(P[0])}, ${U.dispY(P[1])})</b></p>
-<p class="muted small">複素数モード: 2直線を「点＋方向角」に直し交点公式へ。</p>`,
+        solution: `<p><b>【外積法】</b>方向ベクトル r=B−A、s=D−C。 t＝{(C−A)×s} ÷ (r×s)（×は外積）、P＝A＋t·r。</p>
+<hr class="sep">
+<p><b>【複素数法（fx-JP500）】</b> 各点を複素数で電卓の <b>A〜D に STO</b>（実部=X北・虚部=Y東）。</p>
+<p class="formula">t ＝ Im( (C−A)÷(D−C) ) ÷ Im( (B−A)÷(D−C) )</p>
+<p class="formula">P ＝ A ＋ (B−A)×t</p>
+<p class="muted small">複素数の割り算（分数）の<b>虚部</b>どうしの比で t が出る（＝「分数の分数」）。P を = すると直交 X,Y で読める。</p>
+<p>⟹ <b>P(${U.dispX(P[0])}, ${U.dispY(P[1])})</b></p>`,
       };
     },
   },
