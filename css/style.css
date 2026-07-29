@@ -381,6 +381,11 @@ table.simple.cx-legend td { padding: 4px 7px; }
 .fig-steps .chip { background: var(--surface); color: var(--muted); border: 1px solid var(--border); border-radius: 99px; padding: 5px 11px; font-size: 12.5px; cursor: pointer; }
 .fig-steps .chip.active { background: var(--accent); color: #00121b; border-color: var(--accent); font-weight: 700; }
 
+/* 作図の自己チェック（機械採点できない図面の記載事項を項目化したもの） */
+.fig-check { margin: 12px 4px 4px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.fig-check-item { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; font-size: 13px; line-height: 1.5; cursor: pointer; }
+.fig-check-item input { margin-top: 3px; flex: 0 0 auto; width: 16px; height: 16px; accent-color: var(--accent); }
+
 /* 横断検索 */
 .search-box { width: 100%; box-sizing: border-box; margin: 4px 0 2px; padding: 11px 14px; font-size: 15px; color: var(--text); background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; outline: none; }
 .search-box:focus { border-color: var(--accent); }

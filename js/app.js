@@ -463,12 +463,13 @@ function buildSearchIndex() {
       }),
     );
   if (typeof WRITTEN !== "undefined")
+    // 記述式は毎回生成するので問題文が固定でない。表題と論点タグを検索対象にする。
     WRITTEN.forEach((w) =>
       idx.push({
         type: "記述",
         cat: w.type,
         label: w.title,
-        text: w.title + " " + stripHtml(w.statement || ""),
+        text: w.title + " " + w.type + " " + (w.combo || []).join(" "),
         open: () => renderWritten(w.id),
       }),
     );
@@ -2844,13 +2845,18 @@ function renderCalcProblem(type) {
 // ─────────── 記述式 ───────────
 function renderWrittenList() {
   const d = Store.load();
+  const combos = WRITTEN.filter((w) => w.combo).length;
   view.innerHTML =
     `<h2 style="font-size:15px;margin:4px">記述式（書式）実践問題</h2>
-    <p class="muted small" style="margin:0 4px 10px">紙と電卓と三角定規を用意して、実際に作図・申請書を書いてから答え合わせすること。</p>` +
+    <p class="muted small" style="margin:0 4px 6px">紙と電卓と三角定規を用意して、実際に作図・申請書を書いてから答え合わせすること。</p>
+    <p class="small" style="margin:0 4px 10px;color:var(--accent)">🎲 <b>開くたびに問題が変わります</b>（座標値・地目・地番・当事者・日付を毎回振り直し）。うち${combos}問は<b>登記の組み合わせ問題</b>で、申請件数と登記の目的まで問われます。</p>` +
     WRITTEN.map((w) => {
       const r = d.written[w.id];
+      const comboTags = (w.combo || [])
+        .map((c) => `<span class="tag warn">${esc(c)}</span>`)
+        .join("");
       return `<div class="card clickable" data-w="${w.id}" style="padding:13px 14px">
-        <span class="tag">${esc(w.type)}</span><span class="muted small">${esc(w.target)}</span>
+        <span class="tag">${esc(w.type)}</span>${comboTags}<span class="muted small">${esc(w.target)}</span>
         <div style="margin-top:4px"><b>${esc(w.title)}</b></div>
         ${r ? `<span class="tag ${r.score / r.total >= 0.8 ? "ok" : "warn"}">前回 ${r.score}/${r.total}</span>` : ""}
       </div>`;
@@ -2862,9 +2868,52 @@ function renderWrittenList() {
     );
 }
 
+// 作図の自己採点チェックリスト。
+// 手描きの図面は機械採点できないので、準則が定める記載事項を項目に落として自己申告させる。
+// 本試験の減点は「求積を間違えた」より「記載事項を落とした」で起きることが多いため、
+// 何を書き忘れたかを毎回突きつけるのがねらい。得点は自己申告なので本採点とは分けて表示する。
+function figChecklistHtml(w) {
+  const items = w.figureChecks || [];
+  if (!items.length) return "";
+  return `
+    <div class="fig-check" id="figCheck">
+      <div class="sb-row" style="margin-bottom:6px">
+        <span><b>📐 作図の自己チェック</b>（図面に書けていた項目にチェック）</span>
+        <span id="figCheckScore" class="muted">0 / ${items.length}</span>
+      </div>
+      ${items
+        .map(
+          (t, i) =>
+            `<label class="fig-check-item"><input type="checkbox" data-fc="${i}"> <span>${esc(t)}</span></label>`,
+        )
+        .join("")}
+      <p class="muted small" style="margin:6px 0 0">自己申告のため上の得点には含めません。チェックが付かなかった項目が本番での減点箇所です。</p>
+    </div>`;
+}
+
+// チェックボックスの集計を配線する
+function wireFigChecklist() {
+  const box = document.getElementById("figCheck");
+  if (!box) return;
+  const boxes = box.querySelectorAll("input[data-fc]");
+  const out = document.getElementById("figCheckScore");
+  const update = () => {
+    const n = box.querySelectorAll("input[data-fc]:checked").length;
+    out.textContent = `${n} / ${boxes.length}`;
+    out.className = n === boxes.length ? "ok-text" : "muted";
+  };
+  boxes.forEach((b) => b.addEventListener("change", update));
+}
+
+// 記述式1問を表示する。問題は開くたびに buildWritten() で作り直すので、
+// 同じ id でも数値・地目・当事者が毎回変わる（opts.seed を渡せば同じ問題を再現できる）。
 function renderWritten(id, opts) {
   opts = opts || {};
-  const w = WRITTEN.find((x) => x.id === id);
+  const w = buildWritten(id, opts.seed || wgNewSeed());
+  if (!w) {
+    view.innerHTML = `<div class="card"><b>問題の生成に失敗しました。</b><p class="muted small">もう一度お試しください。</p></div>`;
+    return;
+  }
   const coordsTable = w.coords.length
     ? `
     <table class="simple"><tr><th>点</th><th>X座標(m)</th><th>Y座標(m)</th><th>備考</th></tr>
@@ -2898,9 +2947,10 @@ function renderWritten(id, opts) {
   view.innerHTML = `
     <button class="back" id="backBtn">${opts.mock ? "← 模試を中断" : "← 記述式一覧"}</button>
     <div class="card">
-      <span class="tag">${esc(w.type)}</span><span class="muted small">${esc(w.target)}</span>
+      <span class="tag">${esc(w.type)}</span>${(w.combo || []).map((c) => `<span class="tag warn">${esc(c)}</span>`).join("")}<span class="muted small">${esc(w.target)}</span>
       ${opts.mock ? "" : `<span class="w-timer" id="wTimer">⏱ 00:00</span>`}
       <h2 style="margin-top:6px">${esc(w.title)}</h2>
+      <p class="muted small" style="margin:-4px 0 8px">問題番号 #${w.seed}（この番号の問題は同じ内容で再現できます）</p>
       ${w.statement}
       ${coordsTable}
       <canvas class="fig" id="figCanvas" width="640" height="480"></canvas>
@@ -3034,7 +3084,13 @@ function renderWritten(id, opts) {
           <button class="chip active" data-fl="3">④求積</button>
         </div>
         <p class="muted small">自分の紙の作図とステップで見比べてください。${opts.mock ? "" : "配点は本番に近づけた目安（計算重視）です。"}</p>
-        ${opts.mock ? '<button class="btn" id="mockWNext">記述採点を記録して次へ ▶</button>' : ""}
+        ${figChecklistHtml(w)}
+        ${
+          opts.mock
+            ? '<button class="btn" id="mockWNext">記述採点を記録して次へ ▶</button>'
+            : `<button class="btn" id="wAgainBtn">🎲 同じ論点で別の問題を解く</button>
+        <button class="btn secondary" id="wSameBtn">同じ問題(#${w.seed})をもう一度</button>`
+        }
       </div>`;
     // 作図ステップ切替
     view.querySelectorAll("#figSteps .chip").forEach((b) =>
@@ -3049,14 +3105,24 @@ function renderWritten(id, opts) {
           .scrollIntoView({ block: "center" });
       }),
     );
+    wireFigChecklist();
     // 解説中の条文もタップ可能に
     view
       .querySelectorAll('[id^="wtExpl"], [id^="wfExpl"]')
       .forEach((el) => linkArticlesInElement(el, defLawForCat(w.type)));
-    if (opts.mock)
+    if (opts.mock) {
       document
         .getElementById("mockWNext")
         .addEventListener("click", () => opts.onDone(score, total));
+    } else {
+      // 「別の問題」は新しいシードで作り直し、「もう一度」は同じシードで再現する
+      document
+        .getElementById("wAgainBtn")
+        .addEventListener("click", () => renderWritten(id));
+      document
+        .getElementById("wSameBtn")
+        .addEventListener("click", () => renderWritten(id, { seed: w.seed }));
+    }
   });
 }
 
