@@ -18,9 +18,15 @@ const CALC_GUIDE = [
         <li><b>Pol(ΔX, ΔY)</b> … 座標差から「距離 と 方向角」を一発。結果は変数 <b>X＝距離</b>、<b>Y＝方向角</b> に自動格納。</li>
         <li><b>Rec(S, T)</b> … 距離と方向角から「ΔX と ΔY」を一発。結果は <b>X＝ΔX</b>、<b>Y＝ΔY</b>。</li>
       </ul>`,
-    formula: `<b>Pol(ΔX, ΔY)</b> ⟹ X＝√(ΔX²＋ΔY²)（距離S）、 Y＝tan⁻¹(ΔY/ΔX)（方向角T・−180〜180°、負なら＋360°）<br>
-      <b>Rec(S, T)</b> ⟹ X＝S·cosT（ΔX）、 Y＝S·sinT（ΔY）<br>
-      呼び出し: <b>RCL X</b>／<b>RCL Y</b>。 度分秒入力・表示: <b>°′″</b> キー（10進⇔度分秒は <b>S⇔D</b>）`,
+    formula:
+      `<b>Pol(ΔX, ΔY)</b>　直交座標 → 極座標（＝逆計算）` +
+      mathml("X ＝ \\sqrt{ΔX^{2} ＋ ΔY^{2}}　\\paren{距離S}", true) +
+      mathml("Y ＝ tan^{-1}\\frac{ΔY}{ΔX}　\\paren{方向角T}", true) +
+      `<p class="muted small" style="margin:-4px 0 8px;text-align:center">Tは −180〜180° で返る。負なら ＋360°。</p>` +
+      `<b>Rec(S, T)</b>　極座標 → 直交座標（＝放射）` +
+      mathml("X ＝ S·cosT　\\paren{ΔX}", true) +
+      mathml("Y ＝ S·sinT　\\paren{ΔY}", true) +
+      `<p class="muted small" style="margin:-2px 0 0">結果の呼び出しは <b>RCL X</b>／<b>RCL Y</b>。度分秒の入力・表示は <b>°′″</b> キー（10進⇔度分秒は <b>S⇔D</b>）。</p>`,
     cases: [
       {
         title: "Pol — 逆計算（2点の座標 → 距離・方向角）",
@@ -97,7 +103,18 @@ const CALC_GUIDE = [
         <li>距離 ＝ <b>Abs(差)</b>、 方向角 ＝ <b>arg(差)</b>（負のときは＋360°）</li>
       </ul>
       <p>以下の<b>例題</b>を、実際の電卓操作のとおりに解いていく。</p>`,
-    formula: `放射: <b>P ＝ A ＋ S∠T</b>　／　逆計算: <b>Abs(B−A)＝距離</b>・<b>arg(B−A)＝方向角</b>　／　面積: <b>S ＝ ½｜Im( Σ conj(Pᵢ)·Pᵢ₊₁ )｜</b>`,
+    formula:
+      `<b>座標を1つの数として扱う</b>　点(X, Y) ＝ X ＋ Y<i>i</i>（実部＝X＝北、虚部＝Y＝東）` +
+      `<p style="margin:10px 0 0"><b>放射</b>（点＋方向角＋距離 → 座標）</p>` +
+      mathml("P ＝ A ＋ S\\angle T", true) +
+      `<p style="margin:8px 0 0"><b>逆計算</b>（2点 → 距離・方向角）</p>` +
+      mathml("距離 ＝ Abs\\paren{B−A}", true) +
+      mathml("方向角 ＝ arg\\paren{B−A}", true) +
+      `<p style="margin:8px 0 0"><b>座標法の面積</b></p>` +
+      mathml(
+        "S ＝ \\frac{1}{2}\\abs{Im\\paren{Σ conj\\paren{P_{i}}·P_{i+1}}}",
+        true,
+      ),
     cases: [
       {
         title: "例題1：放射計算（点＋方向角＋距離 → 座標）",
@@ -107,7 +124,7 @@ const CALC_GUIDE = [
             cls: "calc",
             name: "複素数モードでの解き方",
             body: `<p>CMPLXモードで、Aの座標にベクトルを足すだけ：</p>
-              <div class="formula">100＋50<i>i</i> ＋ 40∠60°</div>
+              <div class="formula">${mathml("\\paren{100 ＋ 50i} ＋ 40\\angle 60°", true)}</div>
               <ul>
                 <li>40∠60° ＝ 40·cos60°＋40·sin60°·<i>i</i> ＝ 20.000＋34.641<i>i</i></li>
                 <li>合計 ＝ (100＋20.000)＋(50＋34.641)<i>i</i> ＝ <b>120.000＋84.641<i>i</i></b></li>
@@ -159,7 +176,7 @@ const CALC_GUIDE = [
             cls: "calc",
             name: "複素数モードでの解き方",
             body: `<p>座標を複素数として、そのまま比例配分の式に入れるだけでよい。</p>
-              <div class="formula">内分 C ＝ (n·A ＋ m·B) ÷ (m＋n)　　外分 D ＝ (−n·A ＋ m·B) ÷ (m−n)</div>
+              <div class="formula">内分 ${mathml("C ＝ \\frac{n·A ＋ m·B}{m ＋ n}", true)}外分 ${mathml("D ＝ \\frac{−n·A ＋ m·B}{m − n}", true)}</div>
               <ul>
                 <li>Ａ＝100＋50<i>i</i>、Ｂ＝140＋80<i>i</i></li>
                 <li>Ｃ＝(2×(100＋50<i>i</i>)＋3×(140＋80<i>i</i>))÷5 ＝ (200＋620)÷5 ＋ (100＋240)÷5·<i>i</i> ＝ <b>124.000＋68.000<i>i</i></b></li>
@@ -179,7 +196,7 @@ const CALC_GUIDE = [
             cls: "calc",
             name: "複素数モードでの解き方",
             body: `<p>交点は「Ａから t 進んだ点」＝「Ｃから u 進んだ点」。方向を単位ベクトル 1∠T で表す。</p>
-              <div class="formula">Ａ ＋ t·(1∠T₁) ＝ Ｃ ＋ u·(1∠T₂)　（t, u は実数）</div>
+              <div class="formula">${mathml("Ａ ＋ t·\\paren{1\\angle T_{1}} ＝ Ｃ ＋ u·\\paren{1\\angle T_{2}}", true)}<p class="muted small" style="text-align:center;margin:-4px 0 0">t, u は実数</p></div>
               <p>両辺を 1∠T₂ で割ると u が実数になるので、<b>虚部だけを見れば t が求まる</b>。</p>
               <ul>
                 <li>Ｃ−Ａ ＝ 60＋10<i>i</i></li>
@@ -201,7 +218,7 @@ const CALC_GUIDE = [
             cls: "calc",
             name: "複素数モードでの解き方",
             body: `<p><b>平行線＝方向角が同じ直線</b>。変わるのは「通る点」だけなので、基準線上の点を<b>法線方向</b>へ動かせばよい。</p>
-              <div class="formula">Ｍ ＝ Ａ ＋ d·(1∠(T ± 90°))　（右へ寄せるなら −90°、左へ寄せるなら ＋90°）</div>
+              <div class="formula">${mathml("Ｍ ＝ Ａ ＋ d·\\paren{1\\angle \\paren{T ± 90°}}", true)}<p class="muted small" style="text-align:center;margin:-4px 0 0">右へ寄せるなら −90°、左へ寄せるなら ＋90°</p></div>
               <ul>
                 <li>Ｍ ＝ (100＋50<i>i</i>) ＋ 5∠(60°−90°) ＝ (100＋50<i>i</i>) ＋ 5∠(−30°)</li>
                 <li>5∠(−30°) ＝ 4.330 − 2.500<i>i</i></li>
@@ -223,7 +240,7 @@ const CALC_GUIDE = [
             cls: "calc",
             name: "複素数モードでの解き方",
             body: `<p>接点Ｔでは <b>ＯＴ ⊥ ＰＴ</b>。したがって △ＯＴＰ は ∠Ｔ＝90° の直角三角形になる。</p>
-              <div class="formula">接線長 ＰＴ ＝ √(|ＯＰ|² − r²)　　接点 Ｔ ＝ Ｏ ＋ r∠(θ<sub>OP</sub> ± α)、α ＝ cos⁻¹(r ÷ |ＯＰ|)</div>
+              <div class="formula">${mathml("ＰＴ ＝ \\sqrt{\\abs{ＯＰ}^{2} − r^{2}}", true)}${mathml("Ｔ ＝ Ｏ ＋ r\\angle \\paren{θ_{OP} ± α}", true)}${mathml("α ＝ cos^{-1}\\frac{r}{\\abs{ＯＰ}}", true)}</div>
               <ul>
                 <li>ＯＰ ＝ (130＋120<i>i</i>) − (100＋100<i>i</i>) ＝ 30＋20<i>i</i>　→ <b>Abs</b>で |ＯＰ|＝36.056、<b>arg</b>で θ<sub>OP</sub>＝33.690°</li>
                 <li>接線長 ＝ √(36.056² − 8²) ＝ √(1300.0 − 64.0) ＝ <b>35.157m</b></li>
@@ -261,14 +278,19 @@ const CALC_GUIDE = [
     },
     figCaption:
       "A→B の線分と分割点C（AC=30m ＝ AC:CB=3:2 のとき C(124.00, 118.00)）",
-    formula: `<b>内分点公式（比 m:n、AがわのみnをBに掛ける“たすき掛け”）</b><br>
-      X<sub>C</sub> ＝ (n·X<sub>A</sub> ＋ m·X<sub>B</sub>) ÷ (m＋n)<br>
-      Y<sub>C</sub> ＝ (n·Y<sub>A</sub> ＋ m·Y<sub>B</sub>) ÷ (m＋n)<br>
-      <br>
-      <b>距離指定（AC＝L）— 相似比 k＝L/|AB| を使う</b><br>
-      X<sub>C</sub> ＝ X<sub>A</sub> ＋ k·ΔX ＝ X<sub>A</sub> ＋ L·(ΔX/|AB|)<br>
-      Y<sub>C</sub> ＝ Y<sub>A</sub> ＋ k·ΔY ＝ Y<sub>A</sub> ＋ L·(ΔY/|AB|)<br>
-      ※ 方向角を使うなら X<sub>C</sub>＝X<sub>A</sub>＋L·cosT、Y<sub>C</sub>＝Y<sub>A</sub>＋L·sinT`,
+    formula:
+      `<b>比で指定（AC:CB ＝ m:n）— 反対側の数を掛ける“たすき掛け”</b>` +
+      mathml("X_{C} ＝ \\frac{n·X_{A} ＋ m·X_{B}}{m ＋ n}", true) +
+      mathml("Y_{C} ＝ \\frac{n·Y_{A} ＋ m·Y_{B}}{m ＋ n}", true) +
+      `<b>距離で指定（AC ＝ L）— 相似比 k を使う</b>` +
+      mathml("k ＝ \\frac{L}{\\abs{AB}}", true) +
+      mathml("X_{C} ＝ X_{A} ＋ k·ΔX", true) +
+      mathml("Y_{C} ＝ Y_{A} ＋ k·ΔY", true) +
+      `<p class="muted small" style="margin:4px 0 0">方向角を使うなら ` +
+      mathml("X_{C} ＝ X_{A} ＋ L·cosT") +
+      `、` +
+      mathml("Y_{C} ＝ Y_{A} ＋ L·sinT") +
+      ` でもよい。</p>`,
     cases: [
       {
         title: "パターン① 距離 AC＝30.00m を直接与えられた場合",
@@ -364,11 +386,17 @@ const CALC_GUIDE = [
       lines: [],
     },
     figCaption: "四角形ABCD（A→B→C→Dの順に結ぶ）。面積＝1850.00㎡",
-    formula: `<b>倍面積（座標法）— 次のどれを使っても同じ</b><br>
-      2S ＝ Σ X<sub>i</sub>·(Y<sub>i+1</sub> − Y<sub>i−1</sub>)　…①（各X×「次のY−前のY」）<br>
-      2S ＝ Σ Y<sub>i</sub>·(X<sub>i−1</sub> − X<sub>i+1</sub>)　…②（①のXY入替）<br>
-      2S ＝ Σ (X<sub>i</sub>·Y<sub>i+1</sub> − X<sub>i+1</sub>·Y<sub>i</sub>)　…③（靴ひも公式／たすき掛け）<br>
-      面積 S ＝ |2S| ÷ 2（符号は回り方の向き。絶対値をとる）`,
+    formula:
+      `<b>倍面積（座標法）— 次のどれを使っても同じ値になる</b>` +
+      mathml("2S ＝ Σ X_{i}·\\paren{Y_{i+1} − Y_{i−1}}", true) +
+      `<p class="muted small" style="margin:-4px 0 6px;text-align:center">①各Xに「次のY − 前のY」を掛ける（試験で最も使う形）</p>` +
+      mathml("2S ＝ Σ Y_{i}·\\paren{X_{i−1} − X_{i+1}}", true) +
+      `<p class="muted small" style="margin:-4px 0 6px;text-align:center">②①のXとYを入れ替えたもの</p>` +
+      mathml("2S ＝ Σ \\paren{X_{i}·Y_{i+1} − X_{i+1}·Y_{i}}", true) +
+      `<p class="muted small" style="margin:-4px 0 6px;text-align:center">③靴ひも公式（たすき掛け）</p>` +
+      `<b>面積</b>` +
+      mathml("S ＝ \\frac{\\abs{2S}}{2}", true) +
+      `<p class="muted small" style="margin:-4px 0 0;text-align:center">符号は一周する向きで決まるだけなので、絶対値をとる。</p>`,
     cases: [
       {
         title: "倍面積→面積→登記地積",
@@ -445,13 +473,21 @@ const CALC_GUIDE = [
       areaLabels: [{ text: "E(=C′)", at: [118.5, 192.5] }],
     },
     figCaption: "対角線BD（破線）／Cを平行移動してE＝C′／三角形ABE が等積",
-    formula: `<b>等積変形の核心</b><br>
+    formula:
+      `<b>等積変形の核心</b><br>
       新点Eは「<b>Cを通りBDに平行な直線</b>」と「<b>直線ADの延長</b>」の交点。<br>
-      ＝ 平行 ⟹ <b>方向角が等しい</b>（T が同じ向き）という条件の交点計算。<br>
-      <br>
-      <b>交点までの距離（直線AD上、Aから測ったa）</b><br>
-      a ＝ {(Y<sub>C</sub>−Y<sub>A</sub>)·cosT<sub>BD</sub> − (X<sub>C</sub>−X<sub>A</sub>)·sinT<sub>BD</sub>} ÷ sin(T<sub>AD</sub> − T<sub>BD</sub>)<br>
-      E ＝ A ＋ a∠T<sub>AD</sub>（X<sub>E</sub>＝X<sub>A</sub>＋a·cosT<sub>AD</sub>、Y<sub>E</sub>＝Y<sub>A</sub>＋a·sinT<sub>AD</sub>）`,
+      平行 ⟹ <b>方向角が等しい</b>ということなので、結局は通常の交点計算に落ちる。` +
+      `<p style="margin:10px 0 0"><b>交点までの距離</b>（直線AD上、Aから測った a）</p>` +
+      mathml(
+        "a ＝ \\frac{\\paren{Y_{C}−Y_{A}}·cosT_{BD} − \\paren{X_{C}−X_{A}}·sinT_{BD}}{sin\\paren{T_{AD} − T_{BD}}}",
+        true,
+      ) +
+      mathml("E ＝ A ＋ a\\angle T_{AD}", true) +
+      `<p class="muted small" style="margin:-4px 0 0;text-align:center">成分で書けば ` +
+      mathml("X_{E} ＝ X_{A} ＋ a·cosT_{AD}") +
+      `、` +
+      mathml("Y_{E} ＝ Y_{A} ＋ a·sinT_{AD}") +
+      `</p>`,
     cases: [
       {
         title: "新点E（＝C′）を求め、面積保存を確かめる",
@@ -519,11 +555,17 @@ const CALC_GUIDE = [
     },
     figCaption:
       "三角形ABCを頂点Aからの直線ADで面積1:2に分割（D(150.00,120.00)）",
-    formula: `<b>分割の2段構え</b><br>
-      ① 全体面積を座標法で：S ＝ |Σ(X<sub>i</sub>Y<sub>i+1</sub>−X<sub>i+1</sub>Y<sub>i</sub>)| ÷ 2<br>
-      ② 面積比 m:n ＝ 底辺比 BD:DC ⟹ DはBCを m:n に内分<br>
-      　 X<sub>D</sub>＝(n·X<sub>B</sub>＋m·X<sub>C</sub>)/(m＋n)、Y<sub>D</sub>＝(n·Y<sub>B</sub>＋m·Y<sub>C</sub>)/(m＋n)<br>
-      （頂点からでなく辺上の定点Pを通す一般形は、部分面積の式を立てて距離Lを解く＝末尾コラム参照）`,
+    formula:
+      `<b>分割は2段構え</b><br>① まず全体面積を座標法で出す` +
+      mathml(
+        "S ＝ \\frac{\\abs{Σ\\paren{X_{i}Y_{i+1} − X_{i+1}Y_{i}}}}{2}",
+        true,
+      ) +
+      `② <b>高さが共通なら、面積比はそのまま底辺比</b>になる。<br>
+      面積比 m:n ＝ 底辺比 BD:DC なので、DはBCを m:n に内分する点。` +
+      mathml("X_{D} ＝ \\frac{n·X_{B} ＋ m·X_{C}}{m ＋ n}", true) +
+      mathml("Y_{D} ＝ \\frac{n·Y_{B} ＋ m·Y_{C}}{m ＋ n}", true) +
+      `<p class="muted small" style="margin:-2px 0 0">頂点からではなく<b>辺上の定点Pを通す</b>一般形は、部分面積の式を立てて距離Lを解く（末尾のコラム参照）。</p>`,
     cases: [
       {
         title: "STEP1 全体面積 → STEP2 分割点D",
@@ -602,10 +644,14 @@ const CALC_GUIDE = [
       areaLabels: [{ text: "放射→P", at: [112, 86] }],
     },
     figCaption: "A→B（距離・方向角）と、Aから放射した新点P",
-    formula: `<b>逆計算（座標→距離・方向角）</b><br>
-      S＝√(ΔX²＋ΔY²)、 T＝tan⁻¹(ΔY/ΔX) を象限補正<br>
-      <b>放射＝正計算（点＋方向角＋距離→座標）</b><br>
-      X<sub>P</sub>＝X<sub>A</sub>＋S·cosT、 Y<sub>P</sub>＝Y<sub>A</sub>＋S·sinT`,
+    formula:
+      `<b>逆計算</b>　2点の座標 → 距離と方向角（電卓の <b>Pol</b>）` +
+      mathml("S ＝ \\sqrt{ΔX^{2} ＋ ΔY^{2}}", true) +
+      mathml("T ＝ tan^{-1}\\frac{ΔY}{ΔX}", true) +
+      `<p class="muted small" style="margin:-4px 0 8px;text-align:center">Tは −180〜180° で返るので、負なら ＋360° して象限を補正する。</p>` +
+      `<b>放射＝正計算</b>　点＋方向角＋距離 → 座標（電卓の <b>Rec</b>）` +
+      mathml("X_{P} ＝ X_{A} ＋ S·cosT", true) +
+      mathml("Y_{P} ＝ Y_{A} ＋ S·sinT", true),
     cases: [
       {
         title: "逆計算：A→Bの距離と方向角",
@@ -676,11 +722,23 @@ const CALC_GUIDE = [
       areaLabels: [{ text: "交点P", at: [121.54, 116.15] }],
     },
     figCaption: "直線ABと直線CDの交点P",
-    formula: `<b>① 2直線（点＋方向角）</b> a＝{(Y<sub>B</sub>−Y<sub>A</sub>)cosT<sub>B</sub>−(X<sub>B</sub>−X<sub>A</sub>)sinT<sub>B</sub>}÷sin(T<sub>A</sub>−T<sub>B</sub>)、P＝A＋a∠T<sub>A</sub><br>
-      <b>② 4点指定</b> t＝{(C−A)×s}÷(r×s)（r＝B−A, s＝D−C, ×は外積）、P＝A＋t·r<br>
-      <b>③ 円と直線</b> t²＋2bt＋c＝0（b＝(P−O)·u, c＝|P−O|²−r²）<br>
-      <b>④ 円と円（距離交会）</b> a＝(d²＋r₁²−r₂²)/2d、h＝√(r₁²−a²)<br>
-      <b>⑤ 垂線の足</b> F＝A＋{(Q−A)·u}·u（u＝直線の単位ベクトル）`,
+    formula:
+      `<p class="fm-head"><b>① 2直線（点＋方向角）</b><br><span class="muted small">Aから交点までの距離 a を出してから放射する</span></p>` +
+      mathml(
+        "a ＝ \\frac{\\paren{Y_{B}−Y_{A}}cosT_{B} − \\paren{X_{B}−X_{A}}sinT_{B}}{sin\\paren{T_{A}−T_{B}}}",
+        true,
+      ) +
+      mathml("P ＝ A ＋ a\\angle T_{A}", true) +
+      `<p class="fm-head"><b>② 4点指定</b><br><span class="muted small">r ＝ B−A、s ＝ D−C（×は外積）</span></p>` +
+      mathml("t ＝ \\frac{\\paren{C−A}×s}{r×s}", true) +
+      mathml("P ＝ A ＋ t·r", true) +
+      `<p class="fm-head"><b>③ 円と直線</b><br><span class="muted small">b ＝ (P−O)·u、c ＝ |P−O|²−r² として2次方程式を解く</span></p>` +
+      mathml("t ＝ −b ± \\sqrt{b^{2} − c}", true) +
+      `<p class="fm-head"><b>④ 円と円（距離交会）</b><br><span class="muted small">中心間距離 d、半径 r₁・r₂</span></p>` +
+      mathml("a ＝ \\frac{d^{2} ＋ r_{1}^{2} − r_{2}^{2}}{2d}", true) +
+      mathml("h ＝ \\sqrt{r_{1}^{2} − a^{2}}", true) +
+      `<p class="fm-head"><b>⑤ 垂線の足</b><br><span class="muted small">u は直線の単位ベクトル</span></p>` +
+      mathml("F ＝ A ＋ \\paren{\\paren{Q−A}·u}·u", true),
     cases: [
       {
         title: "①② 直線どうしの交点（点方向角・4点指定）",
@@ -767,11 +825,19 @@ const CALC_GUIDE = [
       areaLabels: [{ text: "出発点に戻る", at: [100, 100] }],
     },
     figCaption: "閉合トラバース（一周して出発点へ。戻りの誤差が閉合差）",
-    formula: `<b>閉合差</b>: ΔX＝Σ緯距、ΔY＝Σ経距（完全閉合なら0、実測では誤差eX,eY）<br>
-      補正は閉合差を打ち消す向き（<b>−eX, −eY</b>を配分）<br>
-      <b>均等法</b>: vᵢ＝−e ÷ n（測線数で等分）<br>
-      <b>コンパス法(ボーディッチ)</b>: vXᵢ＝−eX·Sᵢ/ΣS、vYᵢ＝−eY·Sᵢ/ΣS（距離に比例）<br>
-      <b>トランシット法</b>: vXᵢ＝−eX·|ΔXᵢ|/Σ|ΔX|、vYᵢ＝−eY·|ΔYᵢ|/Σ|ΔY|（緯距・経距の絶対値に比例）`,
+    formula:
+      `<p class="fm-head"><b>閉合差</b><br><span class="muted small">完全に閉合すれば0になるはずの合計。実測では誤差 eX・eY が残る</span></p>` +
+      mathml("eX ＝ Σ緯距", true) +
+      mathml("eY ＝ Σ経距", true) +
+      `<p style="margin:6px 0">補正は閉合差を<b>打ち消す向き</b>（−eX, −eY）に配分する。</p>` +
+      `<p class="fm-head"><b>均等法</b><br><span class="muted small">測線数 n で等分</span></p>` +
+      mathml("v_{i} ＝ \\frac{−e}{n}", true) +
+      `<p class="fm-head"><b>コンパス法（ボーディッチ）</b><br><span class="muted small">距離に比例させる</span></p>` +
+      mathml("vX_{i} ＝ −eX·\\frac{S_{i}}{ΣS}", true) +
+      mathml("vY_{i} ＝ −eY·\\frac{S_{i}}{ΣS}", true) +
+      `<p class="fm-head"><b>トランシット法</b><br><span class="muted small">緯距・経距の絶対値に比例させる</span></p>` +
+      mathml("vX_{i} ＝ −eX·\\frac{\\abs{ΔX_{i}}}{Σ\\abs{ΔX}}", true) +
+      mathml("vY_{i} ＝ −eY·\\frac{\\abs{ΔY_{i}}}{Σ\\abs{ΔY}}", true),
     cases: [
       {
         title: "観測角から方位角（流れ①）",

@@ -1,5 +1,5 @@
 // オフライン対応 Service Worker
-const CACHE = "chousashi-dojo-v77";
+const CACHE = "chousashi-dojo-v78";
 const ASSETS = [
   "./",
   "./index.html",
@@ -7,6 +7,7 @@ const ASSETS = [
   "./manifest.json",
   "./js/app.js",
   "./js/store.js",
+  "./js/math.js",
   "./js/calc.js",
   "./js/data/schedule.js",
   "./js/data/lectures.js",

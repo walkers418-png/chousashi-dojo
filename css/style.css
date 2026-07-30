@@ -247,6 +247,20 @@ table.simple td.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* 列数の多い表（計算道場の成績など）はスマホ幅で潰れるので内部で横スクロールさせる。
    数値と短い見出しは折り返さず、種目名の列だけが伸縮するようにする。 */
+/* 数式（MathML）。本文より一回り大きくしないと分数の分子分母が潰れて読めない。
+   <math> 自体に display を当てるとMathMLのレイアウトが壊れて1文字ずつ折り返すため、
+   位置と横スクロールは外側の .math-block で制御する。 */
+math.mx { font-size: 1.3em; }
+.math-block {
+  margin: 10px 0; text-align: center;
+  overflow-x: auto; overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+.formula .math-block { margin: 8px 0; }
+/* 公式ブロック内の小見出し。式と地の文が同じ行で折り返すのを防ぐ */
+.fm-head { margin: 14px 0 2px; line-height: 1.6; }
+.fm-head:first-child { margin-top: 0; }
+
 /* 出題頻度バッジ（根拠は答練63冊の実測。本試験の統計ではない旨は本文で明記） */
 .freq-badge {
   display: inline-block; margin-left: 6px; padding: 1px 8px;

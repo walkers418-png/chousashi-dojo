@@ -487,10 +487,12 @@
           "外分点 C(245.155, 238.183)。複素数なら −3A＋4B の1行で出る（分母 m−n=1）。",
         ],
       },
-      formula: `<b>外分点公式（m:n に外分）</b><br>
-        C ＝ (−n·A ＋ m·B) ÷ (m − n)　…複素数なら点をそのまま代入<br>
-        X<sub>C</sub> ＝ (−n·X<sub>A</sub> ＋ m·X<sub>B</sub>)/(m−n)、 Y<sub>C</sub> ＝ (−n·Y<sub>A</sub> ＋ m·Y<sub>B</sub>)/(m−n)<br>
-        <span class="muted small">※4:3 なら m=4, n=3, m−n=1 ⟹ C＝−3A＋4B（割り算不要で最速）</span>`,
+      formula:
+        `<p class="fm-head"><b>外分点公式（m:n に外分）</b><br><span class="muted small">複素数なら点をそのまま代入できる</span></p>` +
+        mathml("C ＝ \\frac{−n·A ＋ m·B}{m − n}", true) +
+        mathml("X_{C} ＝ \\frac{−n·X_{A} ＋ m·X_{B}}{m − n}", true) +
+        mathml("Y_{C} ＝ \\frac{−n·Y_{A} ＋ m·Y_{B}}{m − n}", true) +
+        `<p class="muted small" style="margin:2px 0 0">※4:3 なら m=4, n=3, m−n=1 なので C＝−3A＋4B。割り算が消えて最速。</p>`,
       cases: [
         {
           title: "4:3 に外分する点C",
@@ -577,9 +579,13 @@
           "交点 P(102.150, 110.291)。t＝Im((C−A)/(D−C))÷Im((B−A)/(D−C)) で出る。",
         ],
       },
-      formula: `<b>複素数（分数の分数）</b><br>
-        t ＝ Im( (C−A)/(D−C) ) ÷ Im( (B−A)/(D−C) )、 <b>P ＝ A ＋ (B−A)·t</b><br>
-        <b>連立（外積）</b> r＝B−A, s＝D−C として t＝{(C−A)×s}÷(r×s)、P＝A＋t·r　（×は外積 aₓb_y−a_yb_x）`,
+      formula:
+        `<p class="fm-head"><b>複素数（分数の分数）</b></p>` +
+        mathml("t ＝ \\frac{Im\\paren{\\frac{C−A}{D−C}}}{Im\\paren{\\frac{B−A}{D−C}}}", true) +
+        mathml("P ＝ A ＋ \\paren{B−A}·t", true) +
+        `<p class="fm-head"><b>連立（外積）</b><br><span class="muted small">r＝B−A、s＝D−C（×は外積 aₓb_y−a_yb_x）</span></p>` +
+        mathml("t ＝ \\frac{\\paren{C−A}×s}{r×s}", true) +
+        mathml("P ＝ A ＋ t·r", true),
       cases: [
         {
           title: "直線AB×直線CDの交点P",
@@ -680,9 +686,11 @@
           "2直線の交点 P(102.150,110.291)。倍率 t＝12.206 は A→P の距離(m)。",
         ],
       },
-      formula: `<b>複素数（方向角は極形式 1∠θ）</b><br>
-        t ＝ Im( (C−A)/1∠β ) ÷ Im( 1∠α/1∠β )、 <b>P ＝ A ＋ 1∠α · t</b><br>
-        <span class="muted small">分子・分母とも長さ(m)単位 ⟹ t はそのまま A→P の距離。負なら方向角の真逆。</span>`,
+      formula:
+        `<p class="fm-head"><b>複素数（方向角は極形式 1∠θ）</b></p>` +
+        mathml("t ＝ \\frac{Im\\paren{\\frac{C−A}{1\\angle β}}}{Im\\paren{\\frac{1\\angle α}{1\\angle β}}}", true) +
+        mathml("P ＝ A ＋ 1\\angle α · t", true) +
+        `<p class="muted small" style="margin:2px 0 0">分子・分母とも長さ(m)単位なので、t はそのまま A→P の距離になる。負なら方向角の真逆。</p>`,
       cases: [
         {
           title: "Aから α、Cから β の交点P",
@@ -774,8 +782,13 @@
           "F＝A＋1∠α×16.401 ⟹ F(104.881, 132.907)、点と直線の距離 QF=7.315m。",
         ],
       },
-      formula: `<b>複素数（一撃）</b> w ＝ (Q−A)/1∠α、 <b>AF＝Re(w)</b>、 <b>QF＝|Im(w)|</b>、 F ＝ A ＋ 1∠α·Re(w)<br>
-        <b>通常モード</b> Pol(Q−A)で距離S・方向角T<sub>AQ</sub> → 挟み角 θ＝α−T<sub>AQ</sub> → AF＝S·cosθ、QF＝S·sinθ`,
+      formula:
+        `<p class="fm-head"><b>複素数（一撃）</b></p>` +
+        mathml("w ＝ \\frac{Q−A}{1\\angle α}", true) +
+        mathml("AF ＝ Re\\paren{w}　　QF ＝ \\abs{Im\\paren{w}}", true) +
+        mathml("F ＝ A ＋ 1\\angle α·Re\\paren{w}", true) +
+        `<p class="fm-head"><b>通常モード</b><br><span class="muted small">Pol(Q−A)で距離Sと方向角T<sub>AQ</sub>を出し、挟み角 θ＝α−T<sub>AQ</sub> を作る</span></p>` +
+        mathml("AF ＝ S·cosθ　　QF ＝ S·sinθ", true),
       cases: [
         {
           title: "垂線の足Fと距離QF",
@@ -880,8 +893,13 @@
           "X座標が小さい方＝交点① P(94.425, 115.445) を採用。",
         ],
       },
-      formula: `<b>手順（複素数）</b> ① F＝A＋1∠α·Re((O−A)/1∠α)　② d＝Abs(O−F)　③ t＝√(r²−d²)　④ 交点＝F ± t·1∠α<br>
-        <b>通常モード</b> Pol(O−A)→挟み角→PF＝S·cosθ・d＝S·sinθ→t＝√(r²−d²)→Aから (PF±t) 放射`,
+      formula:
+        `<p class="fm-head"><b>手順（複素数）</b><br><span class="muted small">①垂線の足Fを出す ②中心Oまでの距離d ③半弦t ④F から ±t</span></p>` +
+        mathml("F ＝ A ＋ 1\\angle α·Re\\paren{\\frac{O−A}{1\\angle α}}", true) +
+        mathml("d ＝ Abs\\paren{O−F}", true) +
+        mathml("t ＝ \\sqrt{r^{2} − d^{2}}", true) +
+        mathml("交点 ＝ F ± t·1\\angle α", true) +
+        `<p class="muted small" style="margin:2px 0 0"><b>通常モード</b>: Pol(O−A) → 挟み角 → PF＝S·cosθ、d＝S·sinθ → t＝√(r²−d²) → Aから (PF±t) 放射。</p>`,
       cases: [
         {
           title: "Xが小さい方の交点",
@@ -965,8 +983,11 @@
           "交点は左(94.179,93.959)・右(114.434,110.361)。図面に合う側を採る。",
         ],
       },
-      formula: `<b>余弦定理で内角</b> ∠A ＝ cos⁻¹( (a²＋c²−b²) ÷ (2ac) )、 c＝Abs(B−A)、 T<sub>AB</sub>＝arg(B−A)<br>
-        <b>新点</b> P ＝ A ＋ a∠(T<sub>AB</sub> ± ∠A)　（＋＝左手側／−＝右手側）`,
+      formula:
+        `<p class="fm-head"><b>余弦定理で内角を出す</b><br><span class="muted small">c＝Abs(B−A)、T<sub>AB</sub>＝arg(B−A)</span></p>` +
+        mathml("∠A ＝ cos^{-1}\\frac{a^{2} ＋ c^{2} − b^{2}}{2ac}", true) +
+        `<p class="fm-head"><b>新点を放射する</b><br><span class="muted small">＋が左手側／−が右手側</span></p>` +
+        mathml("P ＝ A ＋ a\\angle \\paren{T_{AB} ± ∠A}", true),
       cases: [
         {
           title: "2円の交点（左・右）",
