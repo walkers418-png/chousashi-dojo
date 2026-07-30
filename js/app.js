@@ -77,6 +77,16 @@ function renderToday() {
   const mistakes = Store.mistakeItems().length;
   // 実データから「今やると効く順」のおすすめを動的生成
   const actions = [];
+  // 計算は「毎日触る」のが鉄則（STUDY_PLAN）。今日まだなら最優先で出す。
+  // 助走期間中は計算だけが必須タスクなので、この一手を外さないことが最も効く。
+  const calcToday = Store.calcDoneToday();
+  if (calcToday === 0)
+    actions.push({
+      icon: "🧮",
+      label: "計算道場 — 今日はまだ0問",
+      sub: "1週間空けると速度が落ちる。まずは1問でも触る",
+      act: "calc",
+    });
   if (srsTodo > 0)
     actions.push({
       icon: "🧠",
@@ -97,6 +107,13 @@ function renderToday() {
     sub: "分野・形式をまぜて得点力を鍛える",
     act: "mix",
   });
+  if (calcToday > 0)
+    actions.push({
+      icon: "🧮",
+      label: `計算道場 — 今日 ${calcToday}問 ✅`,
+      sub: "続けてもう1問（種目をまぜると本番に近い）",
+      act: "calc",
+    });
   const recoCard = `
     <div class="card" style="border:1px solid var(--accent-deep)">
       <b style="color:var(--accent)">🎯 今日のおすすめ</b>
@@ -142,7 +159,11 @@ function renderToday() {
       const a = el.dataset.act;
       if (a === "srs") startSrs();
       else if (a === "note") renderMistakeNotebook();
-      else if (a === "mix") {
+      else if (a === "calc") {
+        // 種目をまぜたほうが本番に近いので、いきなり「ごちゃ混ぜ」から始める
+        gotoTab("calc");
+        renderCalcProblem("__mix__");
+      } else if (a === "mix") {
         gotoTab("quiz");
         startMix(buildMixDeck(20));
       }
@@ -2752,6 +2773,33 @@ function mountCalcAnim(anim) {
   draw();
 }
 
+// 秒を「3分12秒」の形にする。1分未満は秒だけ、ちょうどの分は「5分」と読ませる。
+function secLabel(sec) {
+  if (sec == null) return "—";
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  if (!m) return `${s}秒`;
+  return s ? `${m}分${s}秒` : `${m}分`;
+}
+
+// 計算の正解時に出す所要時間バッジ。目標5分に対する現在地と自己ベスト更新を伝える。
+function timeBadgeHtml(type, sec, prevBest) {
+  const target = Store.CALC_TARGET_SEC;
+  const avg = Store.calcAvgSec(type);
+  const isBest = prevBest == null || sec < prevBest;
+  const withinTarget = sec <= target;
+  const parts = [
+    `⏱ <b>${secLabel(sec)}</b>`,
+    withinTarget
+      ? `<span class="ok-text">目標${secLabel(target)}以内 ✅</span>`
+      : `<span class="muted">目標${secLabel(target)}まであと${secLabel(sec - target)}</span>`,
+  ];
+  if (isBest && prevBest != null) parts.push("🏅 自己ベスト更新");
+  if (avg != null)
+    parts.push(`<span class="muted">平均 ${secLabel(avg)}</span>`);
+  return `<div class="small" style="margin:6px 0 2px;display:flex;flex-wrap:wrap;gap:10px">${parts.join("")}</div>`;
+}
+
 function renderCalcProblem(type) {
   // "__mix__" は種目をまぜるインターリービング: 毎問ランダムに別種目を出す
   const isMix = type === "__mix__";
@@ -2760,6 +2808,8 @@ function renderCalcProblem(type) {
     : type;
   const gen = CalcGen[realType];
   const prob = gen.gen();
+  // 解答までの所要時間を計る。目標は1問5分以内（STUDY_PLAN Phase 2）。
+  const startedAt = Date.now();
   const fieldsHtml = prob.fields
     .map((f, i) => {
       if (f.kind === "dms") {
@@ -2825,7 +2875,9 @@ function renderCalcProblem(type) {
       }
       if (!ok) allOk = false;
     });
-    Store.recordCalc(realType, allOk);
+    const sec = Math.round((Date.now() - startedAt) / 1000);
+    const prevBest = (Store.load().calc[realType] || {}).bestSec || null;
+    Store.recordCalc(realType, allOk, sec);
     updateStreak();
     const ansList = prob.fields
       .map(
@@ -2836,6 +2888,7 @@ function renderCalcProblem(type) {
     document.getElementById("resultBox").innerHTML = `
       <div class="expl">
         <b>${allOk ? "✅ 全問正解！" : "❌ 不正解あり"}</b>
+        ${allOk ? timeBadgeHtml(realType, sec, prevBest) : ""}
         <ul style="margin:6px 0 10px 18px">${ansList}</ul>
         <b>解法</b>${prob.solution}
       </div>`;
@@ -3413,7 +3466,16 @@ function renderProgress() {
   const calcRows = CALC_TYPES.map((t) => {
     const s = d.calc[t] || { ok: 0, ng: 0 };
     const tot = s.ok + s.ng;
-    return `<tr><td>${esc(CalcGen[t].name)}</td><td class="num">${tot}</td><td class="num">${tot ? Math.round((s.ok / tot) * 100) + "%" : "—"}</td></tr>`;
+    const avg = Store.calcAvgSec(t);
+    // 目標（5分以内）を満たした平均は緑、超えていれば赤で現在地が一目で分かるようにする
+    const avgCls =
+      avg == null
+        ? "muted"
+        : avg <= Store.CALC_TARGET_SEC
+          ? "ok-text"
+          : "ng-text";
+    return `<tr><td>${esc(CalcGen[t].name)}</td><td class="num">${tot}</td><td class="num">${tot ? Math.round((s.ok / tot) * 100) + "%" : "—"}</td>
+      <td class="num ${avgCls}">${secLabel(avg)}</td><td class="num">${secLabel(s.bestSec || null)}</td></tr>`;
   }).join("");
   const fstats = Store.flashCatStats();
   let fOk = 0,
@@ -3523,7 +3585,8 @@ function renderProgress() {
     </div>
     <div class="card">
       <h2>計算道場</h2>
-      <table class="simple"><tr><th>種目</th><th>解答数</th><th>正答率</th></tr>${calcRows}</table>
+      <p class="muted small" style="margin:0 0 8px">平均・ベストは<b>正解した問題だけ</b>を対象に計測しています。目標は1問${secLabel(Store.CALC_TARGET_SEC)}以内。</p>
+      <div class="table-scroll"><table class="simple"><tr><th>種目</th><th>解答数</th><th>正答率</th><th>平均</th><th>ベスト</th></tr>${calcRows}</table></div>
     </div>
     <div class="card">
       <h2>📈 学習の推移（直近14日）</h2>

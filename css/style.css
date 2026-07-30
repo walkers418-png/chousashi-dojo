@@ -245,6 +245,12 @@ table.simple th, table.simple td { border: 1px solid var(--border); padding: 6px
 table.simple th { background: var(--surface2); color: var(--muted); font-weight: 600; }
 table.simple td.num { text-align: right; font-variant-numeric: tabular-nums; }
 
+/* 列数の多い表（計算道場の成績など）はスマホ幅で潰れるので内部で横スクロールさせる。
+   数値と短い見出しは折り返さず、種目名の列だけが伸縮するようにする。 */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-scroll table.simple { min-width: 380px; }
+.table-scroll th, .table-scroll td.num { white-space: nowrap; }
+
 .lecture-body p { margin-bottom: 10px; }
 .lecture-body ul, .lecture-body ol { margin: 0 0 10px 18px; }
 .lecture-body li { margin-bottom: 4px; }

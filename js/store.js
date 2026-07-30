@@ -3,6 +3,11 @@ const Store = {
   KEY: "chousashi_dojo_v1",
   _cache: null,
 
+  // 計算1問にこれ以上かかった記録は「席を外した」とみなして時間を採用しない（秒）
+  CALC_SEC_MAX: 1800,
+  // 本試験で計算1問にかけられる目安。STUDY_PLAN の Phase 2 目標「1問5分以内」に対応（秒）
+  CALC_TARGET_SEC: 300,
+
   load() {
     if (this._cache) return this._cache;
     try {
@@ -12,7 +17,7 @@ const Store = {
     }
     this._cache.quiz = this._cache.quiz || {}; // {qid: {ok, ng, last}}
     this._cache.flash = this._cache.flash || {}; // {fid: {ok, ng}} 一問一答
-    this._cache.calc = this._cache.calc || {}; // {type: {ok, ng}}
+    this._cache.calc = this._cache.calc || {}; // {type: {ok, ng, n, sumSec, bestSec, lastSec}} 速度は正解時のみ計上
     this._cache.written = this._cache.written || {}; // {wid: {done, score}}
     this._cache.days = this._cache.days || []; // ["YYYY-MM-DD", ...] 学習した日
     this._cache.checks = this._cache.checks || {}; // 今日のタスクチェック {date: [bool]}
@@ -22,6 +27,7 @@ const Store = {
     this._cache.overconf = this._cache.overconf || {}; // {"quiz:M01": true} 過信（自信あり×不正解）項目
     this._cache.memos = this._cache.memos || {}; // {"quiz:M01": "自分メモ"} 間違いノートのメモ
     this._cache.daily = this._cache.daily || {}; // {date: {ok, ng}} 日別の正答内訳（学習推移グラフ用）
+    this._cache.calcDaily = this._cache.calcDaily || {}; // {date: 計算道場の解答数} 助走期間の毎日20分を促すため
     return this._cache;
   },
 
@@ -125,14 +131,36 @@ const Store = {
     });
   },
 
-  recordCalc(type, ok) {
+  // 計算道場の1問を記録する。sec は解答までの秒数。
+  // 速度は「正解したときだけ」計上する（速い誤答を自己ベストにしないため）。
+  // 席を外した場合の外れ値を弾くため、CALC_SEC_MAX 秒を超えたものは時間を捨てる。
+  recordCalc(type, ok, sec) {
     const d = this.load();
     const r = d.calc[type] || { ok: 0, ng: 0 };
     ok ? r.ok++ : r.ng++;
+    if (ok && typeof sec === "number" && sec > 0 && sec <= this.CALC_SEC_MAX) {
+      r.n = (r.n || 0) + 1;
+      r.sumSec = (r.sumSec || 0) + sec;
+      r.lastSec = sec;
+      r.bestSec = r.bestSec ? Math.min(r.bestSec, sec) : sec;
+    }
     d.calc[type] = r;
+    const t = this.today();
+    d.calcDaily[t] = (d.calcDaily[t] || 0) + 1;
     this.bumpDaily(ok);
     this.touchToday();
     this.save();
+  },
+
+  // 種目の平均解答秒数。正解の記録がなければ null。
+  calcAvgSec(type) {
+    const r = this.load().calc[type];
+    return r && r.n ? Math.round(r.sumSec / r.n) : null;
+  },
+
+  // 今日「計算道場を」何問解いたか。今日のおすすめの出し分けに使う。
+  calcDoneToday() {
+    return this.load().calcDaily[this.today()] || 0;
   },
 
   recordWritten(wid, score, total, meta) {

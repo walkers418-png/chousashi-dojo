@@ -8,9 +8,19 @@
 // 幾何計算は精度確保のため必ず「ローカル枠（小さい値）」で行い、
 // 表示・解答だけ base を足してワールド座標にする（大座標での桁落ちを回避）。
 
+// 規則100条で「地積の大小にかかわらず0.01㎡未満切捨て」となる地目。
+// それ以外の地目は10㎡を超えると1㎡未満切捨てになる。
+const FINE_CHIMOKU = ["宅地", "鉱泉地"];
+// 座標法の問題で使う地目。切捨ての桁を毎回考えさせるため両系統を混ぜる。
+const AREA_CHIMOKU = ["宅地", "鉱泉地", "田", "畑", "山林", "雑種地", "原野"];
+
 const CalcUtil = {
   ri(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
+  },
+  // 配列から1つ選ぶ
+  pick(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
   },
   // mm精度のローカル座標値（lo〜hi の整数 + 0.000〜0.999）
   rc(lo, hi) {
@@ -365,7 +375,14 @@ const CalcGen = {
       const names = ["A", "B", "C", "D"];
       const dbl = Math.abs(U.doubleArea(pts)); // ローカル枠で計算（桁落ちなし）
       const ar = dbl / 2;
-      const chiseki = ar > 10 ? Math.floor(ar + 1e-9) : U.floor2(ar);
+      // 規則100条は地目で切捨ての桁が変わる。宅地・鉱泉地は常に0.01㎡未満切捨て、
+      // それ以外は10㎡超なら1㎡未満切捨て。本試験の最大の失点源なので地目も毎回変える。
+      const chimoku = U.pick(AREA_CHIMOKU);
+      const isFine = FINE_CHIMOKU.indexOf(chimoku) >= 0;
+      const coarse = !isFine && ar > 10;
+      const chiseki = coarse
+        ? Math.floor(+ar.toFixed(6))
+        : Math.floor(+(ar * 100).toFixed(4)) / 100;
       const rows = pts
         .map(
           (p, i) =>
@@ -380,7 +397,7 @@ const CalcGen = {
         })
         .join("<br>");
       return {
-        html: `<p>筆界点A・B・C・Dで囲まれた土地（宅地）の<b>面積</b>と<b>登記すべき地積</b>を求めよ。</p>
+        html: `<p>筆界点A・B・C・Dで囲まれた土地（地目 <b>${chimoku}</b>）の<b>面積</b>と<b>登記すべき地積</b>を求めよ。</p>
 <table class="simple"><tr><th>点</th><th>X座標(m)</th><th>Y座標(m)</th></tr>${rows}</table>`,
         fields: [
           {
@@ -398,7 +415,13 @@ const CalcGen = {
         ],
         solution: `<p>倍面積＝ΣXᵢ(Yᵢ₊₁−Yᵢ₋₁)（座標差の式なので世界測地系の大座標でも値は同じ）</p><p class="mono small">${calcRows}</p>
 <p>倍面積＝${dbl.toFixed(4)} ⟹ 面積＝<b>${U.f2(ar)}㎡</b></p>
-<p>地積（規則100条）: ${ar > 10 ? "10㎡超 ⟹ 1㎡未満切捨て" : "10㎡以下 ⟹ 0.01㎡未満切捨て"} ⟹ <b>${chiseki}㎡</b></p>`,
+<p>地積（規則100条）: ${
+          isFine
+            ? `<b>${chimoku}</b>は地積の大小にかかわらず<b>0.01㎡未満を切捨て</b>`
+            : coarse
+              ? `<b>${chimoku}</b>で10㎡超 ⟹ <b>1㎡未満を切捨て</b>（宅地・鉱泉地なら0.01㎡未満切捨てになる点に注意）`
+              : `<b>${chimoku}</b>だが10㎡以下 ⟹ <b>0.01㎡未満を切捨て</b>`
+        } ⟹ <b>${coarse ? chiseki : chiseki.toFixed(2)}㎡</b></p>`,
       };
     },
   },
