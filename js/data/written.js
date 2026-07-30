@@ -157,7 +157,8 @@ function _wBunpitsuCore(rng, o) {
       pts: 3,
       expl:
         `ΔX=${(sh.Q[0] - sh.P[0]).toFixed(dg)}、ΔY=${(sh.Q[1] - sh.P[1]).toFixed(dg)} より ` +
-        `√(ΔX²+ΔY²)=<b>${wgDist(sh.P, sh.Q).toFixed(dg)}m</b>。<br>` +
+        mathml("\\sqrt{ΔX^{2} ＋ ΔY^{2}}", true) +
+        `<p style="text-align:center;margin:0">＝ <b>${wgDist(sh.P, sh.Q).toFixed(dg)}m</b></p>` +
         `辺長は<b>規則77条1項の記録事項</b>で、記入漏れは減点対象。`,
     },
     {
@@ -365,7 +366,9 @@ const WRITTEN = [
             answer: +wgDist(B, C).toFixed(2),
             tol: 0.02,
             pts: 2,
-            expl: `√(${(C[0] - B[0]).toFixed(2)}²+${(C[1] - B[1]).toFixed(2)}²)＝<b>${wgDist(B, C).toFixed(2)}m</b>（辺長は小数第2位）`,
+            expl:
+              mathml("\\sqrt{ΔX^{2} ＋ ΔY^{2}}", true) +
+              `<p style="text-align:center;margin:0">＝ √(${(C[0] - B[0]).toFixed(2)}² ＋ ${(C[1] - B[1]).toFixed(2)}²) ＝ <b>${wgDist(B, C).toFixed(2)}m</b></p><p class="muted small">辺長は小数第2位まで。</p>`,
           },
         ],
         appForm: wgRenkenForm(1, [
@@ -785,7 +788,9 @@ const WRITTEN = [
             answer: +wgDist(B, C).toFixed(2),
             tol: 0.02,
             pts: 2,
-            expl: `√(${(C[0] - B[0]).toFixed(2)}²+${(C[1] - B[1]).toFixed(2)}²)＝<b>${wgDist(B, C).toFixed(2)}m</b>`,
+            expl:
+              mathml("\\sqrt{ΔX^{2} ＋ ΔY^{2}}", true) +
+              `<p style="text-align:center;margin:0">＝ √(${(C[0] - B[0]).toFixed(2)}² ＋ ${(C[1] - B[1]).toFixed(2)}²) ＝ <b>${wgDist(B, C).toFixed(2)}m</b></p>`,
           },
         ],
         appForm: wgRenkenForm(1, [

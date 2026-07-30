@@ -210,8 +210,8 @@ const CalcGen = {
           { label: "方向角 T", kind: "dms", answer: dms, tolSec: 2 },
         ],
         solution: `<p>ΔX=${U.f3(dx)}, ΔY=${U.f3(dy)}（差は座標系に依らない）</p>
-<p>S=√(ΔX²+ΔY²)=<b>${U.f3(S)}m</b></p>
-<p>T=atan(ΔY/ΔX) を象限補正（ΔX${dx > 0 ? ">0" : "<0"}・ΔY${dy > 0 ? ">0" : "<0"} ⟹ 第${dx > 0 ? (dy > 0 ? "1" : "4") : dy > 0 ? "2" : "3"}象限）⟹ <b>${U.dmsStr(dms)}</b></p>
+<div class="formula">${mathml("S ＝ \\sqrt{ΔX^{2} ＋ ΔY^{2}}", true)}<p style="text-align:center;margin:0">＝ <b>${U.f3(S)}m</b></p>${mathml("T ＝ tan^{-1}\\frac{ΔY}{ΔX}", true)}</div>
+<p>Tを象限補正（ΔX${dx > 0 ? ">0" : "<0"}・ΔY${dy > 0 ? ">0" : "<0"} ⟹ 第${dx > 0 ? (dy > 0 ? "1" : "4") : dy > 0 ? "2" : "3"}象限）⟹ <b>${U.dmsStr(dms)}</b></p>
 <p class="muted small">電卓: <b>Pol(ΔX, ΔY)</b> ⟹ RCL X=距離・RCL Y=方向角 を一発（θが負なら＋360°）。複素数モードなら (ΔX＋ΔYi) を極形式。差で計算するので世界測地系でも桁は気にしない。</p>`,
       };
     },
@@ -285,7 +285,7 @@ const CalcGen = {
 <p>直線1上の点＝A＋a∠T<sub>A</sub>、直線2上の点＝B＋b∠T<sub>B</sub> が一致するとして連立（a,bは各点からの距離）:</p>
 <p class="formula">X<sub>A</sub>＋a·cosT<sub>A</sub> ＝ X<sub>B</sub>＋b·cosT<sub>B</sub><br>Y<sub>A</sub>＋a·sinT<sub>A</sub> ＝ Y<sub>B</sub>＋b·sinT<sub>B</sub></p>
 <p>a について解く（クラメルの公式）:</p>
-<p class="formula">a ＝ {(Y<sub>B</sub>−Y<sub>A</sub>)cosT<sub>B</sub>−(X<sub>B</sub>−X<sub>A</sub>)sinT<sub>B</sub>} ÷ sin(T<sub>A</sub>−T<sub>B</sub>) ＝ <b>${a.toFixed(3)}m</b></p>
+<div class="formula">${mathml("a ＝ \\frac{\\paren{Y_{B}−Y_{A}}cosT_{B} − \\paren{X_{B}−X_{A}}sinT_{B}}{sin\\paren{T_{A}−T_{B}}}", true)}<p style="text-align:center;margin:0">＝ <b>${a.toFixed(3)}m</b></p></div>
 <p>P ＝ A＋a∠T<sub>A</sub> ⟹ X=<b>${U.dispX(px)}</b>、Y=<b>${U.dispY(py)}</b></p>
 <hr class="sep">
 <p><b>【複素数（fx-JP500）法】</b> 点を A＝X<sub>A</sub>＋Y<sub>A</sub>i、B＝X<sub>B</sub>＋Y<sub>B</sub>i で表す（<b>実部=X(北)・虚部=Y(東)・∠=方向角</b>）。</p>
@@ -345,7 +345,7 @@ const CalcGen = {
           { label: "CのX座標", kind: "num", answer: U.ansX(cx), tol: 0.02 },
           { label: "CのY座標", kind: "num", answer: U.ansY(cy), tol: 0.02 },
         ],
-        solution: `<p>|AB|＝√(ΔX²＋ΔY²)＝${L.toFixed(4)}m、相似比 k＝AC/|AB|＝${k.toFixed(5)}</p>
+        solution: `<div class="formula">${mathml("\\abs{AB} ＝ \\sqrt{ΔX^{2} ＋ ΔY^{2}}", true)}<p style="text-align:center;margin:0">＝ ${L.toFixed(4)}m</p>${mathml("k ＝ \\frac{AC}{\\abs{AB}}", true)}<p style="text-align:center;margin:0">＝ ${k.toFixed(5)}</p></div>
 <p>X<sub>C</sub>＝X<sub>A</sub>＋k·ΔX＝<b>${U.dispX(cx)}</b>、Y<sub>C</sub>＝Y<sub>A</sub>＋k·ΔY＝<b>${U.dispY(cy)}</b></p>
 <p class="muted small">複素数モード: A＋(${Lc.toFixed(3)}÷|B−A|)×(B−A)。</p>`,
       };
@@ -416,7 +416,7 @@ const CalcGen = {
             tol: 0.001,
           },
         ],
-        solution: `<p>倍面積＝ΣXᵢ(Yᵢ₊₁−Yᵢ₋₁)（座標差の式なので世界測地系の大座標でも値は同じ）</p><p class="mono small">${calcRows}</p>
+        solution: `<div class="formula">${mathml("2S ＝ Σ X_{i}\\paren{Y_{i+1} − Y_{i−1}}", true)}</div><p class="muted small">座標差の式なので、世界測地系の大きな座標でも値は変わらない。</p><p class="mono small">${calcRows}</p>
 <p>倍面積＝${dbl.toFixed(4)} ⟹ 面積＝<b>${U.f2(ar)}㎡</b></p>
 <p>地積（規則100条）: ${
           isFine
@@ -524,11 +524,11 @@ const CalcGen = {
           { label: "PのX座標", kind: "num", answer: U.ansX(P[0]), tol: 0.02 },
           { label: "PのY座標", kind: "num", answer: U.ansY(P[1]), tol: 0.02 },
         ],
-        solution: `<p><b>【外積法】</b>方向ベクトル r=B−A、s=D−C。 t＝{(C−A)×s} ÷ (r×s)（×は外積）、P＝A＋t·r。</p>
+        solution: `<p><b>【外積法】</b>方向ベクトル r＝B−A、s＝D−C（×は外積）。</p>
+<div class="formula">${mathml("t ＝ \\frac{\\paren{C−A}×s}{r×s}", true)}${mathml("P ＝ A ＋ t·r", true)}</div>
 <hr class="sep">
 <p><b>【複素数法（fx-JP500）】</b> 各点を複素数で電卓の <b>A〜D に STO</b>（実部=X北・虚部=Y東）。</p>
-<p class="formula">t ＝ Im( (C−A)÷(D−C) ) ÷ Im( (B−A)÷(D−C) )</p>
-<p class="formula">P ＝ A ＋ (B−A)×t</p>
+<div class="formula">${mathml("t ＝ \\frac{Im\\paren{\\frac{C−A}{D−C}}}{Im\\paren{\\frac{B−A}{D−C}}}", true)}${mathml("P ＝ A ＋ \\paren{B−A}×t", true)}</div>
 <p class="muted small">複素数の割り算（分数）の<b>虚部</b>どうしの比で t が出る（＝「分数の分数」）。P を = すると直交 X,Y で読める。</p>
 <p>⟹ <b>P(${U.dispX(P[0])}, ${U.dispY(P[1])})</b></p>`,
       };
@@ -593,8 +593,9 @@ const CalcGen = {
             tol: 0.03,
           },
         ],
-        solution: `<p>直線を P＋t·(cosθ, sinθ) と置き円の式へ代入。<b>t²＋2bt＋c＝0</b>、b＝(Pₓ−Oₓ)cosθ＋(P_y−O_y)sinθ、c＝(Pₓ−Oₓ)²＋(P_y−O_y)²−r²。</p>
-<p>t＝−b±√(b²−c) ⟹ <b>①(${U.dispX(sol[0][0])}, ${U.dispY(sol[0][1])})・②(${U.dispX(sol[1][0])}, ${U.dispY(sol[1][1])})</b></p>
+        solution: `<p>直線を P＋t·(cosθ, sinθ) と置いて円の式へ代入すると、t の2次方程式になる。</p>
+<div class="formula">${mathml("t^{2} ＋ 2bt ＋ c ＝ 0", true)}<p class="muted small" style="text-align:center;margin:2px 0 6px">b ＝ (Pₓ−Oₓ)cosθ ＋ (P_y−O_y)sinθ　　c ＝ (Pₓ−Oₓ)² ＋ (P_y−O_y)² − r²</p>${mathml("t ＝ −b ± \\sqrt{b^{2} − c}", true)}</div>
+<p>⟹ <b>①(${U.dispX(sol[0][0])}, ${U.dispY(sol[0][1])})・②(${U.dispX(sol[1][0])}, ${U.dispY(sol[1][1])})</b></p>
 <p class="muted small">判別式が負なら交わらない、0なら接する。</p>`,
       };
     },
@@ -652,7 +653,9 @@ const CalcGen = {
             tol: 0.03,
           },
         ],
-        solution: `<p>AB間距離 d、Aから垂線の足まで <b>a＝(d²＋r1²−r2²)/(2d)</b>、高さ <b>h＝√(r1²−a²)</b>。足M＝A＋a·(AB単位ベクトル)、交点＝M±h·(ABに直交する単位ベクトル)。</p>
+        solution: `<p>AB間距離を d として、Aから垂線の足Mまでの距離 a と高さ h を出す。</p>
+<div class="formula">${mathml("a ＝ \\frac{d^{2} ＋ r_{1}^{2} − r_{2}^{2}}{2d}", true)}${mathml("h ＝ \\sqrt{r_{1}^{2} − a^{2}}", true)}</div>
+<p>足M＝A＋a·(AB単位ベクトル)、交点＝M±h·(ABに直交する単位ベクトル)。</p>
 <p>⟹ <b>①(${U.dispX(sol[0][0])}, ${U.dispY(sol[0][1])})・②(${U.dispX(sol[1][0])}, ${U.dispY(sol[1][1])})</b>（基線の両側）</p>
 <p class="muted small">境界点復元・TS距離観測で頻出。</p>`,
       };
@@ -722,7 +725,8 @@ const CalcGen = {
           { label: "CのX座標", kind: "num", answer: U.ansX(cx), tol: 0.02 },
           { label: "CのY座標", kind: "num", answer: U.ansY(cy), tol: 0.02 },
         ],
-        solution: `<p>外分点公式（分母が <b>引き算 m−n</b>）: X<sub>C</sub>＝(m·X<sub>B</sub>−n·X<sub>A</sub>)/(m−n)、Y<sub>C</sub>＝(m·Y<sub>B</sub>−n·Y<sub>A</sub>)/(m−n)</p>
+        solution: `<p>外分点公式。内分点と違い<b>分母が引き算 m−n</b> になる。</p>
+<div class="formula">${mathml("X_{C} ＝ \\frac{m·X_{B} − n·X_{A}}{m − n}", true)}${mathml("Y_{C} ＝ \\frac{m·Y_{B} − n·Y_{A}}{m − n}", true)}</div>
 <p>⟹ <b>C(${U.dispX(cx)}, ${U.dispY(cy)})</b>　${m > n ? "（Bの外側）" : "（Aの外側）"}</p>
 <p class="muted small">内分点で n を −n に置換した形。</p>`,
       };
@@ -987,9 +991,12 @@ const CalcGen = {
           },
         ],
         solution: `<p><b>補正の向き</b>: 閉合差を打ち消すので各測線へ <b>−ΔX, −ΔY</b> を配分する。</p>
-<p><b>均等法</b>: 全測線へ等分 → vX＝−ΔX/n＝${(-eX / n).toFixed(4)}、vY＝−ΔY/n＝${(-eY / n).toFixed(4)}</p>
-<p><b>コンパス法(ボーディッチ)</b>: 距離に比例 → vX＝−ΔX×Sᵢ/ΣS、vY＝−ΔY×Sᵢ/ΣS（第1測線: ${((-eX * L0.S) / sumS).toFixed(4)}, ${((-eY * L0.S) / sumS).toFixed(4)}）</p>
-<p><b>トランシット法</b>: 緯距・経距の絶対値に比例 → vX＝−ΔX×|ΔXᵢ|/Σ|ΔX|、vY＝−ΔY×|ΔYᵢ|/Σ|ΔY|（第1測線: ${((-eX * Math.abs(L0.dX)) / sumAX).toFixed(4)}, ${((-eY * Math.abs(L0.dY)) / sumAY).toFixed(4)}）</p>
+<p><b>均等法</b>（全測線へ等分）</p>
+<div class="formula">${mathml("vX ＝ \\frac{−ΔX}{n}　　vY ＝ \\frac{−ΔY}{n}", true)}<p style="text-align:center;margin:0">＝ ${(-eX / n).toFixed(4)}, ${(-eY / n).toFixed(4)}</p></div>
+<p><b>コンパス法（ボーディッチ）</b>（距離に比例）</p>
+<div class="formula">${mathml("vX_{i} ＝ −ΔX·\\frac{S_{i}}{ΣS}　　vY_{i} ＝ −ΔY·\\frac{S_{i}}{ΣS}", true)}<p style="text-align:center;margin:0">第1測線: ${((-eX * L0.S) / sumS).toFixed(4)}, ${((-eY * L0.S) / sumS).toFixed(4)}</p></div>
+<p><b>トランシット法</b>（緯距・経距の絶対値に比例）</p>
+<div class="formula">${mathml("vX_{i} ＝ −ΔX·\\frac{\\abs{ΔX_{i}}}{Σ\\abs{ΔX}}　　vY_{i} ＝ −ΔY·\\frac{\\abs{ΔY_{i}}}{Σ\\abs{ΔY}}", true)}<p style="text-align:center;margin:0">第1測線: ${((-eX * Math.abs(L0.dX)) / sumAX).toFixed(4)}, ${((-eY * Math.abs(L0.dY)) / sumAY).toFixed(4)}</p></div>
 <p>本問は<b>${method}</b>: 第1測線 vX＝<b>${U.f3(vX)}</b>, vY＝<b>${U.f3(vY)}</b></p>
 <p>調整後P2＝P1＋(第1測線ΔX＋vX, ΔY＋vY)＝<b>(${U.dispX(p2x)}, ${U.dispY(p2y)})</b></p>
 <p class="muted small">使い分け: 角と距離の精度が同程度→コンパス法（最も一般的）。角の精度が高い→トランシット法。簡易→均等法。</p>`,
@@ -1099,9 +1106,12 @@ const CalcGen = {
           { label: "TのY座標", kind: "num", answer: U.ansY(T[1]), tol: 0.03 },
         ],
         solution: `<p><b>接線長</b>: 接点Ｔでは <b>ＯＴ⊥ＰＴ</b> なので、△ＯＴＰは∠Ｔ＝90°の直角三角形。<br>
-|ＯＰ|＝${U.f3(dOP)}m、半径 r＝${U.f3(r)}m より <b>ＰＴ＝√(|ＯＰ|²−r²)</b>＝√(${(dOP * dOP).toFixed(3)}−${(r * r).toFixed(3)})＝<b>${U.f3(tanLen)}m</b></p>
+|ＯＰ|＝${U.f3(dOP)}m、半径 r＝${U.f3(r)}m。</p>
+<div class="formula">${mathml("ＰＴ ＝ \\sqrt{\\abs{ＯＰ}^{2} − r^{2}}", true)}<p style="text-align:center;margin:0">＝ √(${(dOP * dOP).toFixed(3)} − ${(r * r).toFixed(3)}) ＝ <b>${U.f3(tanLen)}m</b></p></div>
 <p><b>接点の座標</b>: Ｏから見たＰの方向角を θ<sub>OP</sub>＝${U.f3(U.rad2deg(tAng) < 0 ? U.rad2deg(tAng) + 360 : U.rad2deg(tAng))}° とすると、
-接点は θ<sub>OP</sub> から <b>α＝arccos(r/|ＯＰ|)＝${U.f3(half)}°</b> だけ回した方向にある。<br>
+接点は θ<sub>OP</sub> から α だけ回した方向にある。</p>
+<div class="formula">${mathml("α ＝ cos^{-1}\\frac{r}{\\abs{ＯＰ}}", true)}<p style="text-align:center;margin:0">＝ <b>${U.f3(half)}°</b></p></div>
+<p>
 Ｔ＝Ｏ＋<b>Rec(r, θ<sub>OP</sub>${sgn > 0 ? "＋" : "−"}α)</b>＝<b>(${U.dispX(T[0])}, ${U.dispY(T[1])})</b></p>
 <p class="muted small"><b>電卓手順</b>: ①<b>Pol</b>でＯ→Ｐの距離と方向角 ②ＰＴ＝√(距離²−r²) ③α＝cos⁻¹(r÷距離) ④<b>Rec</b>(r, 方向角±α) で接点の増分ΔX,ΔYを出しＯに足す。<br>
 接点は<b>2つ</b>ある（θ±α）。問題文がどちら側かを必ず確認すること。<b>接線長は左右どちらでも同じ</b>。</p>`,
