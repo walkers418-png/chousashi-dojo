@@ -641,6 +641,110 @@ function wgAreaTasks(o) {
   };
 }
 
+// ─────────── 条文の穴埋め（本試験の記述式 問2 形式） ───────────
+// 本試験の記述式は、問1で計算、問2で条文の穴埋め、問3で申請書、問4で作図を問う。
+// articles.js の条文本文には重要語句が <em class="art-hl"> で囲われているので、
+// そこを（ア）（イ）…に置き換えるだけで、本試験と同じ形式の設問が作れる。
+const WG_KANA = ["ア", "イ", "ウ", "エ", "オ", "カ", "キ", "ク"];
+
+// 登記の種類ごとに、記述式で問われやすい条文を割り当てる。
+const WG_ARTICLE_BY_TYPE = {
+  土地: ["準則68", "規則100", "不登法39", "不登法41", "規則77", "不登法37"],
+  建物: ["不登法51", "不登法57", "規則111", "不登法44"],
+  区分建物: ["規則111", "不登法44", "区分所有法22"],
+};
+
+// 条文テキストから art-hl の語句を抜き出し、n個を空欄にした設問を作る。
+// 戻り値は appForm と同じ形（label/answer/hint/pts）なので採点処理を共用できる。
+function wgArticleFill(rng, key, n) {
+  const raw = typeof ARTICLES !== "undefined" ? ARTICLES[key] : null;
+  if (!raw) return null;
+  // art-note は条文そのものではなく学習用の要約メモで、答えを丸ごと書いていることがある。
+  // 穴埋めに使うと設問が成立しないので落とす。
+  const src = {
+    ...raw,
+    text: raw.text
+      .replace(/<span class="art-note">[\s\S]*?<\/span>/g, "")
+      .trim(),
+  };
+  // まず強調タグを外して素の条文にする。強調のまま残すと、どこが答えかが見えてしまう。
+  const bare = src.text.replace(/<em class="art-hl">([^<]*)<\/em>/g, "$1");
+
+  // 空欄の候補は art-hl で囲われた語句。同じ語句が複数箇所にある条文があるので、
+  // 語句そのもので一意化し、採用したら「全ての出現箇所」を同じ記号で空欄にする。
+  // 一箇所だけ空けると他の号に答えが残ってしまうため。
+  const uniq = [];
+  const seen = {};
+  let m;
+  const re = /<em class="art-hl">([^<]+)<\/em>/g;
+  while ((m = re.exec(src.text))) {
+    const t = m[1];
+    if (t.length < 3 || t.length > 40 || seen[t]) continue;
+    seen[t] = true;
+    uniq.push(t);
+  }
+  if (uniq.length < 2) return null;
+
+  // シードから空欄にする語句を選ぶ
+  const pool = uniq.slice();
+  const picked = [];
+  const want = Math.min(n, pool.length);
+  while (picked.length < want) {
+    picked.push(pool.splice(wgInt(rng, 0, pool.length - 1), 1)[0]);
+  }
+
+  // 長い語句から先に置換する。短い語句が長い語句の一部を食うのを防ぐため。
+  const order = picked.slice().sort((a, b) => b.length - a.length);
+  const token = (t) => ` ${picked.indexOf(t)} `;
+  let html = bare;
+  order.forEach((t) => (html = html.split(t).join(token(t))));
+
+  // 記号（ア・イ・…）は本文に現れる順に振り直す。設問として自然な並びにするため。
+  const appear = picked
+    .map((t) => ({ t, at: html.indexOf(token(t)) }))
+    .filter((x) => x.at >= 0)
+    .sort((a, b) => a.at - b.at);
+  if (appear.length < 2) return null;
+
+  appear.forEach((x, i) => {
+    html = html
+      .split(token(x.t))
+      .join(`<b class="art-blank">（${WG_KANA[i]}）</b>`);
+  });
+
+  return {
+    key,
+    lawLabel: `${src.law}${src.no}（${src.title}）`,
+    html,
+    fields: appear.map((x, i) => ({
+      label: `（${WG_KANA[i]}）`,
+      // 括弧書きの補足（例「百分の一（0.01㎡）未満…」）は省いた解答も正解とする
+      answer: [x.t, x.t.replace(/[（(][^）)]*[）)]/g, "")].filter(
+        (v, j, a) => v && a.indexOf(v) === j,
+      ),
+      pts: 2,
+    })),
+  };
+}
+
+// テンプレートの type から条文を1つ選んで穴埋めを作る。
+// 収録のない条文を指していても null を返すだけで、問題の生成自体は壊さない。
+function wgArticleFillFor(rng, type) {
+  const keys = WG_ARTICLE_BY_TYPE[type] || [];
+  if (!keys.length) return null;
+  // ランダムな位置から一巡し、収録があって穴埋めにできる条文を最初に見つけた時点で採用する
+  const start = wgInt(rng, 0, keys.length - 1);
+  for (let i = 0; i < keys.length; i++) {
+    const built = wgArticleFill(
+      rng,
+      keys[(start + i) % keys.length],
+      wgInt(rng, 3, 4),
+    );
+    if (built) return built;
+  }
+  return null;
+}
+
 // ─────────── テンプレートから1問を組み立てる ───────────
 // written.js の WRITTEN は「メタ情報 + build(rng)」のテンプレート配列。
 // ここでシードから乱数を作り、テンプレートに具体的な問題を吐かせる。
@@ -671,5 +775,12 @@ function buildWritten(id, seed) {
   // 作図チェックはテンプレートが明示していなければ図面の種類から補う
   if (built.figureChecks === undefined)
     built.figureChecks = wgDefaultFigChecks(tpl.type);
+  // 条文の穴埋め（本試験の問2）もテンプレートが指定していなければ種別から補う。
+  // 条文データが読み込まれていない環境では null になるだけで問題は成立する。
+  if (built.articleFill === undefined)
+    built.articleFill = wgArticleFillFor(
+      wgRng((s ^ 0x5bf03635) >>> 0),
+      tpl.type,
+    );
   return built;
 }

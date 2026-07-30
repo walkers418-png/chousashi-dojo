@@ -2997,6 +2997,25 @@ function renderWritten(id, opts) {
     )
     .join("");
 
+  // 本試験の記述式は問2で条文の穴埋めを問う。条文データがあるときだけ出す。
+  const af = w.articleFill;
+  const WKANA = ["ア", "イ", "ウ", "エ", "オ", "カ", "キ", "ク"];
+  const articleFieldsHtml = !af
+    ? ""
+    : `
+      <hr class="sep">
+      <h3>条文（空欄を埋める）</h3>
+      <p class="muted small" style="margin:-4px 0 8px">次は${esc(af.lawLabel)}の条文である。（ア）から（${WKANA[af.fields.length - 1]}）までに入る文言を答えなさい。</p>
+      <div class="art-fill">${af.html}</div>
+      ${af.fields
+        .map(
+          (f, i) => `
+      <label class="fld">${esc(f.label)}</label>
+      <input type="text" id="wa${i}" autocomplete="off">
+      <div id="waExpl${i}"></div>`,
+        )
+        .join("")}`;
+
   view.innerHTML = `
     <button class="back" id="backBtn">${opts.mock ? "← 模試を中断" : "← 記述式一覧"}</button>
     <div class="card">
@@ -3011,6 +3030,7 @@ function renderWritten(id, opts) {
       <hr class="sep">
       <h3>計算問題</h3>
       ${tasksHtml}
+      ${articleFieldsHtml}
       <hr class="sep">
       <h3>登記申請書（穴埋め）</h3>
       ${formHtml}
@@ -3100,8 +3120,25 @@ function renderWritten(id, opts) {
         ? ""
         : `<div class="expl">正答: <b>${esc(accepts[0])}</b>${accepts.length > 1 ? `（他に「${accepts.slice(1).map(esc).join("」「")}」も可）` : ""}</div>`;
     });
-    const score = calcGot + formGot;
-    const total = calcMax + formMax;
+    // 条文の穴埋め（本試験の問2）。表記ゆれを吸収するため申請書と同じ正規化で照合する。
+    let artGot = 0,
+      artMax = 0;
+    if (af) {
+      af.fields.forEach((f, i) => {
+        const pts = f.pts || 2;
+        artMax += pts;
+        const el = document.getElementById(`wa${i}`);
+        const ok = f.answer.some((a) => norm(el.value) === norm(a));
+        if (ok) artGot += pts;
+        el.classList.remove("fld-ok", "fld-ng");
+        el.classList.add(ok ? "fld-ok" : "fld-ng");
+        document.getElementById(`waExpl${i}`).innerHTML = ok
+          ? ""
+          : `<div class="expl">正答: <b>${esc(f.answer[0])}</b></div>`;
+      });
+    }
+    const score = calcGot + formGot + artGot;
+    const total = calcMax + formMax + artMax;
     Store.recordWritten(w.id, score, total, { sec: finalSec });
     updateStreak();
     drawFigure(w.figure, 3);
@@ -3126,6 +3163,12 @@ function renderWritten(id, opts) {
         <div class="score-breakdown">
           <div class="sb-row"><span>計算・求積</span><span>${calcGot} / ${calcMax}点</span></div>
           <div class="sb-bar"><div style="width:${pctBar(calcGot, calcMax)}%"></div></div>
+          ${
+            artMax
+              ? `<div class="sb-row"><span>条文</span><span>${artGot} / ${artMax}点</span></div>
+          <div class="sb-bar"><div style="width:${pctBar(artGot, artMax)}%"></div></div>`
+              : ""
+          }
           <div class="sb-row"><span>申請書</span><span>${formGot} / ${formMax}点</span></div>
           <div class="sb-bar"><div style="width:${pctBar(formGot, formMax)}%"></div></div>
         </div>

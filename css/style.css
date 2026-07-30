@@ -247,6 +247,14 @@ table.simple td.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* 列数の多い表（計算道場の成績など）はスマホ幅で潰れるので内部で横スクロールさせる。
    数値と短い見出しは折り返さず、種目名の列だけが伸縮するようにする。 */
+/* 記述式 問2 の条文穴埋め */
+.art-fill {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 11px 13px; margin: 8px 0 12px;
+  font-size: 13.5px; line-height: 2;
+}
+.art-fill .art-blank { color: var(--accent); font-weight: 700; }
+
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .table-scroll table.simple { min-width: 380px; }
 .table-scroll th, .table-scroll td.num { white-space: nowrap; }
