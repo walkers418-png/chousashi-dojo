@@ -11,7 +11,8 @@ const SCHEDULE = {
     {
       id: "S1",
       name: "Sprint 1: 記述の型を体に入れる",
-      from: "2026-01-01",
+      // 過去日から始めておく。方針変更前に開いた日でもフェーズ未定にならないようにするため
+      from: "2020-01-01",
       to: "2026-08-24",
       goal: "土地・建物の申請書と作図の手順を「迷わず書ける」状態にする。計算は毎日。",
       daily: [
@@ -83,6 +84,13 @@ function currentPhase(now) {
     if (ymd >= p.from && ymd <= p.to) return p;
   }
   return SCHEDULE.phases[SCHEDULE.phases.length - 1];
+}
+
+// 試験年度の和暦ラベル。examDate を変えたら表示も自動で追随させるため計算で出す。
+// 令和は2019年が元年（2019 − 2018 = 1）。
+function examYearLabel() {
+  const y = Number(SCHEDULE.examDate.slice(0, 4));
+  return `令和${y - 2018}年度`;
 }
 
 function daysToExam(now) {

@@ -134,7 +134,7 @@ function renderToday() {
     <div class="card">
       <div class="kicker">本試験まで</div>
       <div style="font-size:34px;font-weight:800" class="mono">${dte}<span style="font-size:15px;font-weight:400"> 日</span></div>
-      <div class="muted small">令和9年度 筆記試験（${SCHEDULE.examDate}・午前の部は測量士補で免除申請）</div>
+      <div class="muted small">${esc(examYearLabel())} 筆記試験（${SCHEDULE.examDate}・午前の部は測量士補で免除申請）</div>
       <div class="progressbar"><div style="width:${pct}%"></div></div>
       <div class="kicker" style="margin-top:8px">${esc(phase.name)}（${phase.from} 〜 ${phase.to}）</div>
       <p class="small">${esc(phase.goal)}</p>
