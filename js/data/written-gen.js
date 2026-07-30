@@ -115,6 +115,41 @@ function wgChiseki(area, chimoku) {
   return Math.floor(safe(area));
 }
 
+// ─────────── 地積測定の公差（国土調査法施行令 別表第四・第15条関係） ───────────
+// 公差 =（a ＋ b×⁴√F）×√F     F は一筆地の地積を平方メートル単位で示した数。
+// 出典は国土交通省が公開する参照条文集。答練2022第12回の記載（市街地地域・甲二・
+// 地積281㎡ ⟹ 1.52㎡）と一致することを確認済み。
+const WG_KOSA_COEF = {
+  甲一: [0.025, 0.003],
+  甲二: [0.05, 0.01],
+  甲三: [0.1, 0.02],
+  乙一: [0.1, 0.04],
+  乙二: [0.25, 0.07],
+  乙三: [0.5, 0.14],
+};
+
+// 地域区分ごとに使える精度区分の上限（不動産登記規則10条4項）。
+// 実務・答練では上限の区分がそのまま使われることが多いので、それを既定とする。
+const WG_CHIIKI = [
+  { name: "市街地地域", seido: "甲二", ref: "規則10条4項1号" },
+  { name: "村落・農耕地域", seido: "乙一", ref: "規則10条4項2号" },
+  { name: "山林・原野地域", seido: "乙三", ref: "規則10条4項3号" },
+];
+
+// 地積 F ㎡・精度区分 seido のときの地積測定の公差（㎡）。
+function wgKosa(F, seido) {
+  const c = WG_KOSA_COEF[seido];
+  if (!c || !(F > 0)) return null;
+  return (c[0] + c[1] * Math.pow(F, 0.25)) * Math.sqrt(F);
+}
+
+// 公差は答練でも小数第2位までで示されるので、表示用に丸める。
+// 判定は丸めた値で行う（受験生が問題文の数値で判断するのと同じにするため）。
+function wgKosaShown(F, seido) {
+  const v = wgKosa(F, seido);
+  return v == null ? null : Math.round(v * 100) / 100;
+}
+
 // 規則100条の根拠文。地目によって切捨ての桁が変わるところが最大の失点源なので毎回出す。
 function wgChisekiRule(chimoku) {
   return wgIsFineChimoku(chimoku)

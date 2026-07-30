@@ -247,6 +247,29 @@ table.simple td.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* 列数の多い表（計算道場の成績など）はスマホ幅で潰れるので内部で横スクロールさせる。
    数値と短い見出しは折り返さず、種目名の列だけが伸縮するようにする。 */
+/* 出題頻度バッジ（根拠は答練63冊の実測。本試験の統計ではない旨は本文で明記） */
+.freq-badge {
+  display: inline-block; margin-left: 6px; padding: 1px 8px;
+  border-radius: 999px; font-size: 11px; font-weight: 700; vertical-align: middle;
+}
+.freq-high { background: rgba(76,175,80,.16); color: #66bb6a; border: 1px solid rgba(76,175,80,.4); }
+.freq-base { background: rgba(79,195,247,.16); color: var(--accent); border: 1px solid rgba(79,195,247,.4); }
+.freq-mid  { background: rgba(255,183,77,.14); color: #ffb74d; border: 1px solid rgba(255,183,77,.35); }
+.freq-low  { background: rgba(158,158,158,.14); color: #9e9e9e; border: 1px solid rgba(158,158,158,.35); }
+.freq-none { background: rgba(239,83,80,.12); color: #ef9a9a; border: 1px solid rgba(239,83,80,.35); }
+.freq-note { margin: 6px 0 10px; line-height: 1.7; }
+
+/* 数値入力＋符号反転ボタン。iOSの数字キーパッドにマイナスキーがないための救済。 */
+.num-input { display: flex; gap: 6px; align-items: stretch; }
+.num-input input { flex: 1; min-width: 0; }
+.sign-btn {
+  flex: 0 0 auto; width: 52px;
+  background: var(--surface2); color: var(--fg);
+  border: 1px solid var(--border); border-radius: 10px;
+  font-size: 17px; font-weight: 700; cursor: pointer;
+}
+.sign-btn:active { background: var(--accent-deep); }
+
 /* 記述式 問2 の条文穴埋め */
 .art-fill {
   background: var(--surface2); border: 1px solid var(--border);

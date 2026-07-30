@@ -2614,7 +2614,7 @@ function renderCalcMenu() {
               const g = CalcGen[t];
               const s = d.calc[t] || { ok: 0, ng: 0 };
               return `<div class="card clickable" data-calc="${t}" style="padding:13px 14px">
-        <b>${esc(g.name)}</b>
+        <b>${esc(g.name)}</b>${calcFreqBadge(t)}
         <div class="muted small">${esc(g.desc)}</div>
         <div class="small" style="margin-top:4px"><span class="tag ok">正解 ${s.ok}</span><span class="tag ng">不正解 ${s.ng}</span></div>
       </div>`;
@@ -2669,6 +2669,38 @@ function renderCalcGuideList() {
     );
 }
 
+// 計算手法ガイド → 対応する計算道場の種目。頻度表示を両方でそろえるための対応表。
+// 電卓・複素数は「解き方」であって出題分野ではないので、頻度ではなく別の注記を出す。
+const GUIDE_CALC_TYPE = {
+  kiso: "dist",
+  koten: "intersect",
+  naibunten: "internal",
+  "zahyoho-area": "area",
+  bunkatsu: "internal",
+  "traverse-heigosa": "closedTraverse",
+  tousekihenkei: null, // 等積変形（答練では確認できず）
+};
+
+function guideFreqBadge(id) {
+  const t = GUIDE_CALC_TYPE[id];
+  if (t) return calcFreqBadge(t);
+  if (id === "dentaku" || id === "fukusosu")
+    return '<span class="freq-badge freq-base">全問で使う</span>';
+  if (id === "tousekihenkei")
+    return '<span class="freq-badge freq-none">答練では未確認</span>';
+  return "";
+}
+
+function guideFreqNote(id) {
+  const t = GUIDE_CALC_TYPE[id];
+  if (t) return calcFreqNote(t);
+  if (id === "dentaku" || id === "fukusosu")
+    return `<p class="muted small freq-note">📊 これは出題分野ではなく<b>解き方</b>です。どの計算にも使うため、ここを速くすると全体が速くなります。</p>`;
+  if (id === "tousekihenkei")
+    return `<p class="muted small freq-note">📊 答練63冊（2019〜2023年度）では出題を確認できませんでした。<b>※調査対象は答練であり本試験そのものではないため、本試験に出ないという意味ではありません。</b>面積を保ったまま境界を付け替える考え方は分割の理解に役立つため残しています。</p>`;
+  return "";
+}
+
 function renderCalcGuide(id) {
   const g = CALC_GUIDE.find((x) => x.id === id);
   if (!g) return renderCalcGuideList();
@@ -2700,8 +2732,9 @@ function renderCalcGuide(id) {
   view.innerHTML = `
     <button class="back" id="backBtn">← 計算手法ガイド一覧</button>
     <div class="card">
-      <span class="tag">${esc(g.tag)}</span>
+      <span class="tag">${esc(g.tag)}</span>${guideFreqBadge(g.id)}
       <h2>${esc(g.name)}</h2>
+      ${guideFreqNote(g.id)}
       <div class="lecture-body">${g.intro}</div>
       ${animHtml}
       <div class="formula">${g.formula}</div>
@@ -2800,12 +2833,54 @@ function timeBadgeHtml(type, sec, prevBest) {
   return `<div class="small" style="margin:6px 0 2px;display:flex;flex-wrap:wrap;gap:10px">${parts.join("")}</div>`;
 }
 
+// 数値入力欄。iOS の数字キーパッド（inputmode=decimal）にはマイナスキーがないため、
+// 符号を反転する ± ボタンを必ず添える。世界測地系の座標は X が負になるので必須。
+// type は number ではなく text にする。number だと "-" だけの中間状態を
+// ブラウザが弾いてしまい、空欄から符号だけ先に立てることができないため。
+// inputmode=decimal なので数字キーパッドは従来どおり出る。
+function numInputHtml(id, style) {
+  return `<div class="num-input">
+    <input type="text" id="${id}" inputmode="decimal" autocomplete="off"${style ? ` style="${style}"` : ""}>
+    <button type="button" class="sign-btn" data-sign="${id}" title="符号を反転">±</button>
+  </div>`;
+}
+
+// ± ボタンを有効にする。描画のたびに呼ぶ。
+function wireSignButtons(root) {
+  (root || document).querySelectorAll(".sign-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const el = document.getElementById(btn.dataset.sign);
+      if (!el) return;
+      const v = el.value.trim();
+      // 空欄で押したときは「−」を置いておく。続けて数字を打てば負数になる。
+      if (v === "" || v === "-") el.value = v === "-" ? "" : "-";
+      else if (v.startsWith("-")) el.value = v.slice(1);
+      else el.value = "-" + v;
+      el.focus();
+    });
+  });
+}
+
+// 出題頻度（CALC_FREQ.weight）に比例して種目を選ぶ。頻度データのない種目は重み1。
+function pickWeightedCalcType() {
+  const weights = CALC_TYPES.map((t) =>
+    CALC_FREQ[t] ? CALC_FREQ[t].weight : 1,
+  );
+  const total = weights.reduce((s, w) => s + w, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < CALC_TYPES.length; i++) {
+    r -= weights[i];
+    if (r < 0) return CALC_TYPES[i];
+  }
+  return CALC_TYPES[CALC_TYPES.length - 1];
+}
+
 function renderCalcProblem(type) {
   // "__mix__" は種目をまぜるインターリービング: 毎問ランダムに別種目を出す
   const isMix = type === "__mix__";
-  const realType = isMix
-    ? CALC_TYPES[Math.floor(Math.random() * CALC_TYPES.length)]
-    : type;
+  // ごちゃ混ぜは一様抽選ではなく出題頻度で重み付けする。
+  // 本試験でよく使う型に多く当たり、薄い型にも一定の割合で触れられるようにするため。
+  const realType = isMix ? pickWeightedCalcType() : type;
   const gen = CalcGen[realType];
   const prob = gen.gen();
   // 解答までの所要時間を計る。目標は1問5分以内（STUDY_PLAN Phase 2）。
@@ -2820,15 +2895,16 @@ function renderCalcProblem(type) {
           <input type="number" id="f${i}s" placeholder="秒" inputmode="numeric">
         </div>`;
       }
-      return `<label class="fld">${esc(f.label)}</label><input type="number" step="0.01" id="f${i}" inputmode="decimal">`;
+      return `<label class="fld">${esc(f.label)}</label>${numInputHtml(`f${i}`)}`;
     })
     .join("");
 
   view.innerHTML = `
     <button class="back" id="backBtn">← 計算道場メニュー</button>
     <div class="card">
-      ${isMix ? '<span class="tag">🔀 ごちゃ混ぜ</span>' : ""}
+      ${isMix ? '<span class="tag">🔀 ごちゃ混ぜ</span>' : ""}${calcFreqBadge(realType)}
       <h2>${esc(gen.name)}</h2>
+      ${calcFreqNote(realType)}
       ${prob.html}
       ${fieldsHtml}
       <button class="btn" id="checkBtn">答え合わせ</button>
@@ -2846,6 +2922,7 @@ function renderCalcProblem(type) {
   document
     .getElementById("nextProb")
     .addEventListener("click", () => renderCalcProblem(type));
+  wireSignButtons();
   document.getElementById("checkBtn").addEventListener("click", () => {
     let allOk = true;
     prob.fields.forEach((f, i) => {
@@ -2980,7 +3057,7 @@ function renderWritten(id, opts) {
     <div style="margin-top:14px">
       <b>問${i + 1}</b> ${esc(t.q)}
       <div style="display:flex;gap:8px;align-items:center">
-        <input type="number" step="0.01" id="wt${i}" inputmode="decimal" style="flex:1">
+        ${numInputHtml(`wt${i}`, "flex:1")}
         <span class="muted">${esc(t.unit || "")}</span>
       </div>
       <div id="wtExpl${i}"></div>
@@ -3075,6 +3152,7 @@ function renderWritten(id, opts) {
       if (confirm("フル模試を中断しますか？")) abortFullMock();
     } else renderWrittenList();
   });
+  wireSignButtons();
   document.getElementById("gradeBtn").addEventListener("click", () => {
     if (wTimerInt) {
       clearInterval(wTimerInt);

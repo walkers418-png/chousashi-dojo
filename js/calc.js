@@ -44,6 +44,9 @@ const CalcUtil = {
   deg2rad(d) {
     return (d * Math.PI) / 180;
   },
+  rad2deg(r) {
+    return (r * 180) / Math.PI;
+  },
 
   // ── 座標系（UIで切替・store と同期） ──
   coordMode: "local", // "local" | "jgd"
@@ -993,7 +996,264 @@ const CalcGen = {
       };
     },
   },
+
+  // 平行線 — 「既知の筆界線に平行で、そこから d だけ離れた線」を引く型。
+  // 答練の記述式では「直線ＰＱは直線ＡＥと平行」「筆界線から平行に○m後退」の形で頻出。
+  parallel: {
+    name: "平行線の作図計算（等距離の平行線と交点）",
+    desc: "既知の筆界線に平行で d 離れた直線と、他の筆界との交点",
+    group: "交点計算",
+    gen() {
+      const U = CalcUtil;
+      U.newBase();
+      // 基準となる筆界線 AB
+      const A = [U.rc(100, 115), U.rc(100, 110)];
+      const theta = U.ri(10, 170);
+      const dx = Math.cos(U.deg2rad(theta)),
+        dy = Math.sin(U.deg2rad(theta));
+      const lenAB = U.ri(25000, 45000) / 1000;
+      const B = [U.r3(A[0] + lenAB * dx), U.r3(A[1] + lenAB * dy)];
+      // AB から距離 d の平行線。法線方向は (−dy, dx)。
+      const side = Math.random() < 0.5 ? 1 : -1;
+      const d = U.ri(2000, 12000) / 1000;
+      // 平行線が通る点（AB上の点を法線方向に d 動かす）
+      const M0 = [A[0] + lenAB * 0.5 * dx, A[1] + lenAB * 0.5 * dy];
+      const M = [M0[0] - side * d * dy, M0[1] + side * d * dx];
+      // 交わる相手の筆界線 CD（AB と平行にならない向き）
+      const phi = theta + U.ri(35, 145);
+      const ex = Math.cos(U.deg2rad(phi)),
+        ey = Math.sin(U.deg2rad(phi));
+      const C = [
+        U.r3(A[0] - 8 * dx - side * 3 * dy),
+        U.r3(A[1] - 8 * dy + side * 3 * dx),
+      ];
+      // 平行線（点M・方向(dx,dy)）と 直線C＋t(ex,ey) の交点
+      const det = dx * -ey - dy * -ex;
+      if (Math.abs(det) < 1e-6) return null;
+      const rx = C[0] - M[0],
+        ry = C[1] - M[1];
+      const s = (rx * -ey - ry * -ex) / det;
+      const P = [M[0] + s * dx, M[1] + s * dy];
+      // 交点が現実的な範囲に来ない配置は捨てる
+      if (Math.hypot(P[0] - M0[0], P[1] - M0[1]) > 120) return null;
+      return {
+        html: `<p>筆界線 <b>ＡＢ</b> は点 <b>Ａ(${U.dispX(A[0])}, ${U.dispY(A[1])})</b> を通り方向角 <b>${theta}°00′00″</b> の直線である。<br>
+このＡＢに<b>平行</b>で、ＡＢから <b>${U.f3(d)}m</b> 離れた直線（点 <b>Ｍ(${U.dispX(M[0])}, ${U.dispY(M[1])})</b> を通る側）を引く。<br>
+この平行線と、点 <b>Ｃ(${U.dispX(C[0])}, ${U.dispY(C[1])})</b> を通り方向角 <b>${phi % 360}°00′00″</b> の直線ＣＤとの交点 <b>Ｐ</b> の座標を求めよ（小数第3位）。</p>`,
+        fields: [
+          { label: "PのX座標", kind: "num", answer: U.ansX(P[0]), tol: 0.02 },
+          { label: "PのY座標", kind: "num", answer: U.ansY(P[1]), tol: 0.02 },
+        ],
+        solution: `<p><b>考え方</b>: 平行線は「方向が同じで、通る点だけが違う直線」。方向角はＡＢと同じ <b>${theta}°</b> のまま、通る点をＭに替えて交点計算をするだけでよい。</p>
+<p>平行線: (X, Y)＝Ｍ＋t(cos${theta}°, sin${theta}°)　　直線ＣＤ: (X, Y)＝Ｃ＋u(cos${phi % 360}°, sin${phi % 360}°)</p>
+<p>連立して t を解くと t＝${s.toFixed(4)} ⟹ Ｐ＝<b>(${U.dispX(P[0])}, ${U.dispY(P[1])})</b></p>
+<p class="muted small"><b>平行線の点の作り方</b>: 基準線上の点から<b>法線方向</b>（方向角±90°）へ d だけ進める。方向角θの法線は (−sinθ, cosθ)。
+電卓なら <b>Rec(d, θ+90°)</b> で増分ΔX,ΔYが直接出る。<br>
+記述式では「筆界線から○m後退した線」「隣地境界と平行な分割線」として出る。<b>平行＝方向角が同じ</b>と気づけば、あとは通常の交点計算に落ちる。</p>`,
+      };
+    },
+  },
+
+  // 円の接線 — 円外の一点から円に引いた接線と、その接点。
+  // 隅切り・曲線境界の取付けで使う型。
+  tangent: {
+    name: "円の接線と接点（円外の一点から）",
+    desc: "円外の点Pから円Oへの接線長と接点Tの座標",
+    group: "交点計算",
+    gen() {
+      const U = CalcUtil;
+      U.newBase();
+      const O = [U.rc(100, 115), U.rc(100, 115)];
+      const r = U.ri(6000, 16000) / 1000;
+      // 中心からの距離が半径の1.6〜3.2倍になる位置に外部点Pを置く
+      const dist = (r * U.ri(160, 320)) / 100;
+      const ang = U.ri(0, 359);
+      const P = [
+        U.r3(O[0] + dist * Math.cos(U.deg2rad(ang))),
+        U.r3(O[1] + dist * Math.sin(U.deg2rad(ang))),
+      ];
+      const dOP = Math.hypot(P[0] - O[0], P[1] - O[1]);
+      const tanLen = Math.sqrt(dOP * dOP - r * r);
+      // 接点は OP を基準に ±α 回転した方向。α＝arccos(r/|OP|)
+      const alpha = Math.acos(r / dOP);
+      const baseAng = Math.atan2(O[1] - P[1], O[0] - P[0]); // P→O の向き
+      const tAng = Math.atan2(P[1] - O[1], P[0] - O[0]); // O→P の向き
+      const sgn = Math.random() < 0.5 ? 1 : -1;
+      const T = [
+        O[0] + r * Math.cos(tAng + sgn * alpha),
+        O[1] + r * Math.sin(tAng + sgn * alpha),
+      ];
+      const half = U.rad2deg(alpha);
+      return {
+        html: `<p>中心 <b>Ｏ(${U.dispX(O[0])}, ${U.dispY(O[1])})</b>・半径 <b>${U.f3(r)}m</b> の円がある。<br>
+円外の点 <b>Ｐ(${U.dispX(P[0])}, ${U.dispY(P[1])})</b> からこの円に引いた接線について、<b>接線長ＰＴ</b>と、
+<b>${sgn > 0 ? "左回り" : "右回り"}側の接点Ｔ</b>の座標を求めよ（小数第3位）。</p>`,
+        fields: [
+          {
+            label: "接線長 PT (m)",
+            kind: "num",
+            answer: U.r3(tanLen),
+            tol: 0.02,
+          },
+          { label: "TのX座標", kind: "num", answer: U.ansX(T[0]), tol: 0.03 },
+          { label: "TのY座標", kind: "num", answer: U.ansY(T[1]), tol: 0.03 },
+        ],
+        solution: `<p><b>接線長</b>: 接点Ｔでは <b>ＯＴ⊥ＰＴ</b> なので、△ＯＴＰは∠Ｔ＝90°の直角三角形。<br>
+|ＯＰ|＝${U.f3(dOP)}m、半径 r＝${U.f3(r)}m より <b>ＰＴ＝√(|ＯＰ|²−r²)</b>＝√(${(dOP * dOP).toFixed(3)}−${(r * r).toFixed(3)})＝<b>${U.f3(tanLen)}m</b></p>
+<p><b>接点の座標</b>: Ｏから見たＰの方向角を θ<sub>OP</sub>＝${U.f3(U.rad2deg(tAng) < 0 ? U.rad2deg(tAng) + 360 : U.rad2deg(tAng))}° とすると、
+接点は θ<sub>OP</sub> から <b>α＝arccos(r/|ＯＰ|)＝${U.f3(half)}°</b> だけ回した方向にある。<br>
+Ｔ＝Ｏ＋<b>Rec(r, θ<sub>OP</sub>${sgn > 0 ? "＋" : "−"}α)</b>＝<b>(${U.dispX(T[0])}, ${U.dispY(T[1])})</b></p>
+<p class="muted small"><b>電卓手順</b>: ①<b>Pol</b>でＯ→Ｐの距離と方向角 ②ＰＴ＝√(距離²−r²) ③α＝cos⁻¹(r÷距離) ④<b>Rec</b>(r, 方向角±α) で接点の増分ΔX,ΔYを出しＯに足す。<br>
+接点は<b>2つ</b>ある（θ±α）。問題文がどちら側かを必ず確認すること。<b>接線長は左右どちらでも同じ</b>。</p>`,
+      };
+    },
+  },
 };
+
+// ─────────── 出題頻度 ───────────
+// 根拠は東京法経学院の答練63冊（2019〜2023年度）のOCR全文を種目に固有の表現で検索した
+// 実測値。**本試験そのものの統計ではない**ため、0冊でも本試験に出ないとは限らない。
+// weight は「ごちゃ混ぜ」で選ばれる相対確率。頻出のものほど多く回すための重み。
+//
+//   base  … すべての計算の土台になるもの（単独での出題は少ないが毎回使う）
+//   high  … 答練で頻出
+//   mid   … ときどき出る
+//   low   … まれ
+//   none  … 答練63冊では確認できなかった（本試験での出題を否定するものではない）
+const CALC_FREQ = {
+  area: {
+    rank: "high",
+    vol: 54,
+    weight: 10,
+    note: "記述式の土地はほぼ毎回これで求積する",
+  },
+  floor: {
+    rank: "high",
+    vol: 63,
+    weight: 9,
+    note: "記述式の建物は毎回床面積の認定・計算がある",
+  },
+  parallel: {
+    rank: "high",
+    vol: 39,
+    weight: 8,
+    note: "「筆界線と平行な分割線」の形で頻出",
+  },
+  intersect: {
+    rank: "high",
+    vol: 18,
+    weight: 8,
+    note: "分筆線と筆界の交点。記述式の定番",
+  },
+  intersect4: {
+    rank: "high",
+    vol: 18,
+    weight: 7,
+    note: "交点計算の4点指定バージョン",
+  },
+  dist: {
+    rank: "base",
+    vol: null,
+    weight: 8,
+    note: "逆計算。辺長・方向角の算出で毎回使う土台",
+  },
+  radiate: {
+    rank: "base",
+    vol: null,
+    weight: 7,
+    note: "正計算。新点を出す土台",
+  },
+  internal: {
+    rank: "mid",
+    vol: 11,
+    weight: 5,
+    note: "面積を指定して分割する場面で使う",
+  },
+  perpFoot: {
+    rank: "low",
+    vol: 7,
+    weight: 3,
+    note: "境界線からのオフセットを出す場面",
+  },
+  external: {
+    rank: "low",
+    vol: 5,
+    weight: 2,
+    note: "内分点と対で覚えるが出番は少ない",
+  },
+  traverse: { rank: "low", vol: 2, weight: 2, note: "測量士補の範囲と重なる" },
+  closedTraverse: {
+    rank: "low",
+    vol: 2,
+    weight: 2,
+    note: "測量士補の範囲と重なる",
+  },
+  traverseAdjust: {
+    rank: "low",
+    vol: 2,
+    weight: 1,
+    note: "閉合差の配分。調査士試験での出題は薄い",
+  },
+  circleLine: {
+    rank: "none",
+    vol: 0,
+    weight: 1,
+    note: "曲線境界の取付けで使う。備えとして残す",
+  },
+  circleCircle: {
+    rank: "none",
+    vol: 0,
+    weight: 1,
+    note: "距離交会。現地復元の考え方として押さえる",
+  },
+  tangent: {
+    rank: "none",
+    vol: 0,
+    weight: 1,
+    note: "隅切り・曲線の取付けで使う考え方",
+  },
+  azimuth: {
+    rank: "none",
+    vol: 0,
+    weight: 1,
+    note: "夾角からの方位角。測量士補の範囲と重なる",
+  },
+};
+
+const CALC_FREQ_LABEL = {
+  high: { text: "頻出", cls: "freq-high" },
+  base: { text: "基礎", cls: "freq-base" },
+  mid: { text: "ときどき", cls: "freq-mid" },
+  low: { text: "まれ", cls: "freq-low" },
+  none: { text: "答練では未確認", cls: "freq-none" },
+};
+
+// 種目の頻度バッジHTML。問題画面と計算手法ガイドの両方で使う。
+function calcFreqBadge(type) {
+  const f = CALC_FREQ[type];
+  if (!f) return "";
+  const l = CALC_FREQ_LABEL[f.rank];
+  const basis =
+    f.vol === null
+      ? "他の計算の土台として毎回使う"
+      : `答練63冊中 ${f.vol}冊で確認`;
+  return `<span class="freq-badge ${l.cls}" title="${basis}">${l.text}</span>`;
+}
+
+// 頻度の注記（本文）。0冊のものは「本試験に出ない」と誤解されないよう明記する。
+function calcFreqNote(type) {
+  const f = CALC_FREQ[type];
+  if (!f) return "";
+  const basis =
+    f.vol === null
+      ? "単独での出題は少ないが、他の計算の土台として毎回使う。"
+      : `答練63冊（2019〜2023年度）のうち <b>${f.vol}冊</b> で確認。`;
+  const caveat =
+    f.rank === "none"
+      ? "<br><b>※この調査では出題を確認できなかった種目です。</b>調査対象は答練であり本試験そのものではないため、本試験に出ないという意味ではありません。考え方を押さえる目的で残しています。"
+      : "";
+  return `<p class="muted small freq-note">📊 ${basis}${f.note ? " " + f.note + "。" : ""}${caveat}</p>`;
+}
 
 // 計算道場のメニュー構成（グループ表示用）。CALC_TYPES は全種目のフラットな一覧。
 const CALC_GROUPS = [
@@ -1003,8 +1263,10 @@ const CALC_GROUPS = [
     types: [
       "intersect",
       "intersect4",
+      "parallel",
       "circleLine",
       "circleCircle",
+      "tangent",
       "perpFoot",
     ],
   },

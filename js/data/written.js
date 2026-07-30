@@ -3248,4 +3248,118 @@ const WRITTEN = [
       };
     },
   },
+
+  {
+    id: "W25",
+    type: "土地",
+    title: "土地分筆登記（公差の判断・地積更正の要否）",
+    target: "目標55分",
+    build(rng) {
+      const b = _wBunpitsuCore(rng, { mode: "real", geo: rng() < 0.5 });
+      if (!b) return null;
+
+      // 地域区分から精度区分と公差を決める（規則10条4項・国土調査法施行令別表第四）
+      const chiiki = wgPick(rng, WG_CHIIKI);
+      const kosa = wgKosaShown(b.total, chiiki.seido);
+      if (kosa == null || kosa < 0.05) return null;
+
+      // 登記地積を実測からずらす。公差の内と外をおよそ半々で出し、
+      // 「毎回更正が必要」と覚えてしまわないようにする。
+      const inside = rng() < 0.5;
+      // 内側なら公差の30〜85%、外側なら公差の120〜260%だけずらす
+      const ratio = inside
+        ? wgInt(rng, 30, 85) / 100
+        : wgInt(rng, 120, 260) / 100;
+      const sign = rng() < 0.5 ? -1 : 1;
+      const tokiChiseki = wgChiseki(b.total + sign * kosa * ratio, b.chimoku);
+      const sa = +Math.abs(b.total - tokiChiseki).toFixed(4);
+      // 丸めの結果、意図した内外が入れ替わることがある。判定は実際の差で確定させる。
+      const needsKousei = sa > kosa;
+      // 判定が公差ちょうどの近傍だと自己採点で揉めるので、余裕がない事案は捨てる
+      if (Math.abs(sa - kosa) < 0.05) return null;
+
+      const tax = wgBunpitsuTax(2);
+      const mokuteki = needsKousei
+        ? [
+            "土地地積更正・分筆登記",
+            "土地地積更正分筆登記",
+            "地積更正・分筆登記",
+          ]
+        : ["土地分筆登記", "分筆登記"];
+
+      return {
+        statement:
+          `<p><b>【事案】</b> ${b.owner}は、所有する下記の土地（以下「甲土地」という。）のうち一方の部分を売却するため、` +
+          `${b.date.text}、土地家屋調査士${b.shiho}に必要な登記の申請手続を依頼した。</p>` +
+          // 共通の bukkenLine は求積値をそのまま登記地積として書くため使えない。
+          // この問題は「登記地積と求積値がずれている」ことが主題なので、登記地積を明示する。
+          `<p class="small">所　在　${b.shozai}／地　番　${b.chiban.text}／地　目　<b>${b.chimoku}</b>` +
+          `／地　積　<b>${wgChisekiText(tokiChiseki, b.chimoku)}㎡</b>（登記記録）／所有権登記名義人　${b.owner}</p>` +
+          b.sokuteiNote(1) +
+          `<p>５　甲土地の存する地域は<b>${chiiki.name}</b>であり、地積測定の公差は、` +
+          `国土調査法施行令別表第四に掲げる精度区分<b>${chiiki.seido}</b>として ` +
+          `<b>${kosa.toFixed(2)}㎡</b> である。</p>` +
+          `<p>６　求積値と登記記録の地積との差が<b>公差の範囲内であるときは、地積に関する更正の登記は申請しない</b>ものとする。</p>`,
+        coords: b.coords,
+        tasks: b.tasks.concat([
+          {
+            q: "甲土地（分筆前）の求積値と登記記録の地積との差は何㎡か（小数第２位まで）。",
+            unit: "㎡",
+            answer: +sa.toFixed(2),
+            tol: 0.02,
+            pts: 4,
+            expl:
+              `分筆後の地積の合計＝${wgChisekiText(b.gW, b.chimoku)}＋${wgChisekiText(b.gE, b.chimoku)}` +
+              `＝<b>${wgChisekiText(b.total, b.chimoku)}㎡</b>。<br>` +
+              `登記記録の地積は ${wgChisekiText(tokiChiseki, b.chimoku)}㎡ なので、差は` +
+              `|${b.total.toFixed(2)}−${tokiChiseki.toFixed(2)}|＝<b>${sa.toFixed(2)}㎡</b>。`,
+          },
+        ]),
+        appForm: wgRenkenForm(
+          1,
+          [{ answer: mokuteki, hint: "公差の判断の結果によって変わる" }],
+          "一の申請情報による",
+        ).concat([
+          {
+            label: "地積に関する更正の登記の要否（「必要」か「不要」で答える）",
+            answer: needsKousei
+              ? ["必要", "要", "申請する"]
+              : ["不要", "要しない", "申請しない"],
+            hint: `差 ${sa.toFixed(2)}㎡ と公差 ${kosa.toFixed(2)}㎡ を比べる`,
+            pts: 4,
+          },
+          {
+            label: "申請人の資格",
+            answer: ["所有権登記名義人", "所有権の登記名義人"],
+            hint: "法39条1項",
+          },
+          {
+            label: "添付情報（図面）",
+            answer: "地積測量図",
+            hint: "分筆に必須（規則77条）",
+          },
+          {
+            label: "登録免許税",
+            answer: wgYenAccepts(tax),
+            hint: "分筆後の筆数×1,000円（更正の登記は非課税）",
+            pts: 2,
+          },
+        ]),
+        // 公差の判定そのものを検証対象にする（test_written_gen.mjs が独立計算で照合）
+        verify: Object.assign({}, b.verify, {
+          tokiChiseki: tokiChiseki,
+          seiChiseki: b.total,
+          kousei: needsKousei,
+          kosa: {
+            chiiki: chiiki.name,
+            seido: chiiki.seido,
+            value: kosa,
+            sa: sa,
+          },
+        }),
+        figure: b.figure,
+        figureChecks: b.figureChecks,
+      };
+    },
+  },
 ];
