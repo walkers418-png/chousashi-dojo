@@ -3622,4 +3622,274 @@ const WRITTEN = [
       };
     },
   },
+
+  {
+    id: "W28",
+    type: "区分建物",
+    title: "区分建物の滅失＋区分建物でない建物とする変更（内法→壁芯）",
+    target: "目標40分",
+    combo: ["滅失", "表題部変更"],
+    build(rng) {
+      const owner = wgPerson(rng);
+      const shiho = wgPerson(rng);
+      const shozai = wgShozai(rng);
+      const date = wgDate(rng);
+      const t = wgPick(rng, [0.18, 0.2, 0.24]);
+      // 甲・乙とも壁芯寸法を与える（乙は取り壊す側）
+      const kd = wgStep(rng, 7, 11, 0.5);
+      const kw = wgStep(rng, 8, 12, 0.5);
+      const od = wgStep(rng, 6, 10, 0.5);
+      const ow = wgStep(rng, 7, 11, 0.5);
+      const kUchi = _wYuka((kd - t) * (kw - t)); // 甲の従前（区分建物＝内法）
+      const kKabe = _wYuka(kd * kw); // 甲の変更後（区分建物でない＝壁芯）
+      const oUchi = _wYuka((od - t) * (ow - t)); // 乙の床面積（滅失する）
+      // 内法と壁芯の差が小さいと「測り直す」意味が伝わらない
+      if (kKabe - kUchi < 2) return null;
+
+      return {
+        statement:
+          `<p><b>【事案】</b> ${shozai}に所在する一棟の建物は、<b>甲区分建物と乙区分建物の2個の区分建物のみ</b>で構成されており、` +
+          `いずれも${owner}が所有権の登記名義人である。</p>` +
+          `<p>${date.text}、<b>乙区分建物のみを取り壊した</b>。これにより一棟の建物には甲区分建物だけが残り、` +
+          `甲は<b>区分建物でない建物</b>となった。${owner}は土地家屋調査士${shiho}に必要な登記の申請手続を依頼した。</p>` +
+          `<ul>` +
+          `<li>甲の<b>壁芯</b>寸法: 奥行 <b>${kd.toFixed(2)}m</b> × 間口 <b>${kw.toFixed(2)}m</b></li>` +
+          `<li>乙の<b>壁芯</b>寸法: 奥行 <b>${od.toFixed(2)}m</b> × 間口 <b>${ow.toFixed(2)}m</b></li>` +
+          `<li>壁の厚さは一様に <b>${t.toFixed(2)}m</b>（壁芯から内側へ各 ${(t / 2).toFixed(2)}m）</li>` +
+          `<li>床面積は規則115条による（0.01㎡未満切捨て）</li>` +
+          `</ul>`,
+        coords: [],
+        tasks: [
+          {
+            q: "滅失した乙区分建物の登記記録上の床面積を答えよ。",
+            unit: "㎡",
+            answer: oUchi,
+            tol: 0.005,
+            pts: 3,
+            expl:
+              `乙は<b>区分建物</b>なので内法（規則115条かっこ書）: ` +
+              `${(od - t).toFixed(2)}×${(ow - t).toFixed(2)}＝<b>${oUchi.toFixed(2)}㎡</b>`,
+          },
+          {
+            q: "甲の従前（区分建物であったとき）の床面積を答えよ。",
+            unit: "㎡",
+            answer: kUchi,
+            tol: 0.005,
+            pts: 3,
+            expl: `区分建物なので内法: ${(kd - t).toFixed(2)}×${(kw - t).toFixed(2)}＝<b>${kUchi.toFixed(2)}㎡</b>`,
+          },
+          {
+            q: "甲が区分建物でない建物となった後の床面積を求めよ。",
+            unit: "㎡",
+            answer: kKabe,
+            tol: 0.005,
+            pts: 8,
+            expl:
+              `<b>ここが最大の急所</b>。規則115条が内法によるとしているのは<b>区分建物である建物</b>だけ。<br>` +
+              `甲は区分建物でなくなったので<b>壁芯</b>で測り直す: ${kd.toFixed(2)}×${kw.toFixed(2)}＝<b>${kKabe.toFixed(2)}㎡</b>。<br>` +
+              `従前の ${kUchi.toFixed(2)}㎡ から <b>${(kKabe - kUchi).toFixed(2)}㎡ 増える</b>ため、床面積の変更として表題部の変更の登記が必要になる。`,
+          },
+        ],
+        appForm: [
+          {
+            label: "申請すべき登記の件数",
+            answer: ["2件", "2", "二件"],
+            hint: "乙について1件、甲について1件",
+            pts: 3,
+          },
+          {
+            label: "乙について申請する登記の目的",
+            answer: ["建物滅失登記", "区分建物滅失登記", "建物の滅失の登記"],
+            hint: "取り壊された建物",
+            pts: 3,
+          },
+          {
+            label: "甲について申請する登記の目的",
+            answer: [
+              "建物表題部変更登記",
+              "建物の表題部の変更の登記",
+              "区分建物表題部変更登記",
+            ],
+            hint: "床面積と区分建物でなくなったことの変更",
+            pts: 3,
+          },
+          {
+            label:
+              "この2件を一の申請情報で申請しなければならないか（「必要」か「不要」で答える）",
+            answer: ["不要", "必要でない", "一括申請義務はない"],
+            hint: "一括申請義務を定めた規定があるかどうか",
+            pts: 5,
+          },
+          {
+            label: "申請人の資格",
+            answer: ["所有権登記名義人", "所有権の登記名義人"],
+            hint: "甲・乙とも所有権の登記がある",
+            pts: 2,
+          },
+          {
+            label: "登録免許税",
+            answer: WG_NONTAX_ACCEPTS,
+            hint: "いずれも表示に関する登記",
+            pts: 2,
+          },
+        ],
+        verify: {
+          kind: "kubunMesshitsu",
+          kUchi: kUchi,
+          kKabe: kKabe,
+          oUchi: oUchi,
+          kd: kd,
+          kw: kw,
+          od: od,
+          ow: ow,
+          t: t,
+        },
+        figure: null,
+        figureChecks: wgFigChecks("tatemonoZumen"),
+      };
+    },
+  },
+
+  {
+    id: "W29",
+    type: "区分建物",
+    title:
+      "分離処分可能規約がある区分建物の表題登記（割合の合計が1にならない）",
+    target: "目標50分",
+    build(rng) {
+      const corp = wgPick(rng, ["株式会社", "有限会社"]) + wgPerson(rng);
+      const shiho = wgPerson(rng);
+      const shozai = wgShozai(rng);
+      const date = wgDate(rng);
+      const st = _wStruct(rng, wgPick(rng, [3, 4]) + "階建");
+      const chiban = wgChiban(rng);
+
+      // 3戸。1戸（店舗など）にだけ分離処分可能規約を設定する
+      const rooms = [];
+      for (let i = 0; i < 3; i++) {
+        const d = wgStep(rng, 6, 9.5, 0.5);
+        const w = wgStep(rng, 7, 11, 0.5);
+        const t = wgPick(rng, [0.18, 0.2]);
+        rooms.push({
+          name: i + 1 + "01",
+          d: d,
+          w: w,
+          t: t,
+          area: _wYuka((d - t) * (w - t)),
+        });
+      }
+      const bunriIdx = wgInt(rng, 0, 2); // 分離処分可能規約を設定する専有部分
+      const bunri = rooms[bunriIdx];
+      const others = rooms.filter((_, i) => i !== bunriIdx);
+      const total = +rooms.reduce((s, r) => s + r.area, 0).toFixed(2);
+      if (Math.abs(total - Math.round(total)) < 0.05) return null;
+
+      // 敷地権の割合は「全専有部分の床面積」を分母とする。分離処分可能規約のある
+      // 専有部分は敷地権を持たないため、割合の合計は1にならない。
+      const den = Math.round(total * 100);
+      const nums = others.map((r) => Math.round(r.area * 100));
+      const sumNum = nums[0] + nums[1];
+      if (sumNum >= den) return null; // 合計が1未満になることを保証
+
+      const yoto = wgPick(rng, ["店舗", "事務所", "診療所"]);
+
+      return {
+        statement:
+          `<p><b>【事案】</b> ${corp}は、${shozai}<b>${chiban.text}</b>の土地（所有権・更地）の上に<b>${st.text}</b>の建物を新築した。` +
+          `専有部分は<b>3戸</b>で、いずれも構造上・利用上の独立性を備える。</p>` +
+          `<p>${date.text}、<b>${bunri.name}号（${yoto}）についてのみ</b>、区分所有法22条1項ただし書の規約における別段の定め` +
+          `（<b>分離処分可能規約</b>）が設定された。これにより${bunri.name}号については、${corp}が有する敷地の所有権は<b>敷地権とならない</b>。` +
+          `${corp}は土地家屋調査士${shiho}に登記の申請手続を依頼した。</p>` +
+          `<ul>` +
+          rooms
+            .map(
+              (r) =>
+                `<li>${r.name}号: 壁芯 奥行 ${r.d.toFixed(2)}m × 間口 ${r.w.toFixed(2)}m（壁厚 ${r.t.toFixed(2)}m 一様）${r === bunri ? "　<b>← 分離処分可能規約あり</b>" : ""}</li>`,
+            )
+            .join("") +
+          `<li>敷地権の割合は各専有部分の<b>床面積の割合</b>による。床面積は規則115条（0.01㎡未満切捨て）。</li>` +
+          `</ul>`,
+        coords: [],
+        tasks: rooms
+          .map((r) => ({
+            q: `${r.name}号の床面積を求めよ。`,
+            unit: "㎡",
+            answer: r.area,
+            tol: 0.005,
+            pts: 3,
+            expl:
+              `専有部分は内法（規則115条かっこ書）: ` +
+              `${(r.d - r.t).toFixed(2)}×${(r.w - r.t).toFixed(2)}＝<b>${r.area.toFixed(2)}㎡</b>`,
+          }))
+          .concat([
+            {
+              q: "3戸すべての専有部分の床面積の合計を求めよ（敷地権の割合の分母になる）。",
+              unit: "㎡",
+              answer: total,
+              tol: 0.01,
+              pts: 4,
+              expl:
+                rooms.map((r) => r.area.toFixed(2)).join("＋") +
+                `＝<b>${total.toFixed(2)}㎡</b>。<br>` +
+                `分離処分可能規約がある${bunri.name}号の床面積も<b>分母には含める</b>。` +
+                `含めないと割合の合計が1になってしまい、下の設問の趣旨と合わなくなる。`,
+            },
+          ]),
+        appForm: [
+          {
+            label: "登記の目的",
+            answer: ["区分建物表題登記", "区分建物の表題登記"],
+            hint: "不動産種別から書く",
+            pts: 2,
+          },
+          {
+            label: `敷地権の登記がされない専有部分（号数で答える）`,
+            answer: [bunri.name, bunri.name + "号"],
+            hint: "分離処分可能規約が設定された専有部分",
+            pts: 4,
+          },
+          {
+            label: `${others[0].name}号の敷地権の割合（「◯分の◯」の形で）`,
+            answer: [`${den}分の${nums[0]}`],
+            hint: "分母は3戸すべての床面積の合計",
+            pts: 5,
+          },
+          {
+            label: `${others[1].name}号の敷地権の割合（「◯分の◯」の形で）`,
+            answer: [`${den}分の${nums[1]}`],
+            hint: "同上",
+            pts: 5,
+          },
+          {
+            label:
+              "この一棟の各区分建物に係る敷地権の割合の合計は1になるか（「なる」か「ならない」で答える）",
+            answer: ["ならない", "1にならない", "ならず"],
+            hint: "敷地権を持たない専有部分があることの帰結",
+            pts: 5,
+          },
+          {
+            label: "添付情報（分離処分可能規約に関するもの）",
+            answer: [
+              "当該事由を証する情報",
+              "分離処分可能規約を設定したことを証する情報",
+              "敷地権とならない事由を証する情報",
+            ],
+            hint: "令別表12項・添付情報欄ホ",
+            pts: 4,
+          },
+        ],
+        verify: {
+          kind: "bunriShobun",
+          rooms: rooms.map((r) => r.area),
+          bunriIdx: bunriIdx,
+          total: total,
+          den: den,
+          nums: nums,
+          sumNum: sumNum,
+        },
+        figure: null,
+        figureChecks: wgFigChecks("tatemonoZumen"),
+      };
+    },
+  },
 ];
