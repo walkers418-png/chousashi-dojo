@@ -3367,4 +3367,259 @@ const WRITTEN = [
       };
     },
   },
+
+  {
+    id: "W26",
+    type: "区分建物",
+    title: "共用部分である旨の登記（規約共用部分・内法計算）",
+    target: "目標35分",
+    build(rng) {
+      const owner = wgPerson(rng);
+      const shiho = wgPerson(rng);
+      const shozai = wgShozai(rng);
+      const date = wgDate(rng);
+      const kai = wgPick(rng, [3, 4, 5]);
+      const perFloor = wgPick(rng, [2, 3, 4]);
+      // 規約により共用部分とする部屋（集会所・管理人室）
+      const yoto = wgPick(rng, [
+        { name: "集会所", use: "区分所有者の集会の用" },
+        { name: "管理人室", use: "管理人が常駐して管理事務を行う用" },
+        { name: "倉庫", use: "区分所有者が共同で使用する物置の用" },
+      ]);
+      const d = wgStep(rng, 4.5, 8, 0.5); // 壁芯 奥行
+      const w = wgStep(rng, 5, 9.5, 0.5); // 壁芯 間口
+      const t = wgPick(rng, [0.16, 0.18, 0.2, 0.24]); // 壁厚
+      const uchinori = _wYuka((d - t) * (w - t));
+      const kabeshin = _wYuka(d * w);
+      // 内法と壁芯の差が小さすぎると設問として意味が薄い
+      if (kabeshin - uchinori < 1) return null;
+      // 表示は「◯◯号室」で統一するので、番号だけを持たせる
+      const heya = wgPick(rng, ["101", "102", "103", "201"]);
+
+      return {
+        statement:
+          `<p><b>【事案】</b> ${shozai}に所在する<b>${kai}階建て・各階${perFloor}戸</b>の区分建物（マンション）がある。` +
+          `このうち<b>${heya}号室</b>は、当初から<b>${yoto.name}</b>として${yoto.use}に供されており、構造上・利用上の独立性を備えているため<b>専有部分として登記されている</b>。</p>` +
+          `<p>${date.text}、区分所有者の集会において<b>${heya}号室を共用部分とする規約が設定</b>された。` +
+          `所有権の登記名義人${owner}は、土地家屋調査士${shiho}に必要な登記の申請手続を依頼した。</p>` +
+          `<ul>` +
+          `<li>${heya}号室の<b>壁芯</b>の内のり寸法: 奥行 <b>${d.toFixed(2)}m</b> × 間口 <b>${w.toFixed(2)}m</b></li>` +
+          `<li>周囲の壁の厚さは一様に <b>${t.toFixed(2)}m</b>（壁芯から内側へ各 ${(t / 2).toFixed(2)}m）</li>` +
+          `<li>床面積は規則115条による（0.01㎡未満切捨て）</li>` +
+          `</ul>`,
+        coords: [],
+        tasks: [
+          {
+            q: `${heya}号室の床面積を求めよ。`,
+            unit: "㎡",
+            answer: uchinori,
+            tol: 0.005,
+            pts: 6,
+            expl:
+              `規約共用部分となっても、区分建物として登記されている以上<b>床面積は内法</b>で測る（規則115条かっこ書）。<br>` +
+              `(${d.toFixed(2)}−${(t / 2).toFixed(2)}×2)×(${w.toFixed(2)}−${(t / 2).toFixed(2)}×2)＝${(d - t).toFixed(2)}×${(w - t).toFixed(2)}＝<b>${uchinori.toFixed(2)}㎡</b>。<br>` +
+              `壁芯の ${kabeshin.toFixed(2)}㎡ と書くのは典型的な失点。`,
+          },
+        ],
+        appForm: [
+          {
+            label: "登記の目的",
+            answer: ["共用部分である旨の登記", "共用部分である旨"],
+            hint: "「共用部分の登記」では不正確",
+            pts: 3,
+          },
+          {
+            label: "この登記が記録される部分（表題部か権利部か）",
+            answer: ["表題部", "建物の表題部"],
+            hint: "どこに記録されるか",
+            pts: 3,
+          },
+          {
+            label: "添付情報（規約に関するもの）",
+            answer: [
+              "規約を設定したことを証する情報",
+              "規約設定を証する情報",
+              "規約を証する情報",
+            ],
+            hint: "何によって共用部分になったのか",
+            pts: 3,
+          },
+          {
+            label: "申請人の資格",
+            answer: [
+              "所有権登記名義人",
+              "所有権の登記名義人",
+              "表題部所有者又は所有権の登記名義人",
+            ],
+            hint: "この事案では所有権の登記がある",
+            pts: 2,
+          },
+          {
+            label: "登録免許税",
+            answer: WG_NONTAX_ACCEPTS,
+            hint: "表示に関する登記である",
+            pts: 2,
+          },
+          {
+            label: "共用部分となる時点（「規約の設定時」か「登記の時」か）",
+            answer: ["規約の設定時", "規約設定時", "規約を設定した時"],
+            hint: "登記は何のためにするのか",
+            pts: 4,
+          },
+        ],
+        verify: {
+          kind: "kyoyo",
+          uchinori: uchinori,
+          kabeshin: kabeshin,
+          d: d,
+          w: w,
+          t: t,
+        },
+        figure: null,
+        // 共用部分である旨の登記そのものに図面の提供は要しない
+        figureChecks: [],
+      };
+    },
+  },
+
+  {
+    id: "W27",
+    type: "区分建物",
+    title: "規約敷地を含む敷地権（法定敷地＋規約敷地・割合計算）",
+    target: "目標45分",
+    build(rng) {
+      const corp = wgPick(rng, ["株式会社", "有限会社"]) + wgPerson(rng);
+      const shiho = wgPerson(rng);
+      const shozai = wgShozai(rng);
+      const date = wgDate(rng);
+      const st = _wStruct(rng, wgPick(rng, [3, 4]) + "階建");
+
+      // 専有部分3戸。床面積を変えて割合が単純にならないようにする
+      const rooms = [];
+      for (let i = 0; i < 3; i++) {
+        const d = wgStep(rng, 6, 9, 0.5);
+        const w = wgStep(rng, 7, 11, 0.5);
+        const t = wgPick(rng, [0.18, 0.2]);
+        rooms.push({
+          name: i + 1 + "01",
+          area: _wYuka((d - t) * (w - t)),
+          d: d,
+          w: w,
+          t: t,
+        });
+      }
+      const total = +rooms.reduce((s, r) => s + r.area, 0).toFixed(2);
+      // 端数が出ないと割合の設問にならない
+      if (Math.abs(total - Math.round(total)) < 0.05) return null;
+
+      // 法定敷地（建物の所在する土地）と規約敷地（隣接地）
+      const chiban1 = wgChiban(rng);
+      const chiban2 = wgChiban(rng);
+      if (chiban1.text === chiban2.text) return null;
+      const area1 = wgStep(rng, 400, 900, 0.5);
+      const area2 = wgStep(rng, 120, 350, 0.5);
+      const yoto2 = wgPick(rng, ["駐車場", "通路", "庭"]);
+
+      // 敷地権の割合は約分しない（分母＝専有部分の床面積の合計を100倍した整数）
+      const den = Math.round(total * 100);
+      const num = Math.round(rooms[0].area * 100);
+
+      return {
+        statement:
+          `<p><b>【事案】</b> ${corp}は、${shozai}<b>${chiban1.text}</b>の土地（地目 宅地・地積 ${area1.toFixed(2)}㎡・所有権）の上に、` +
+          `<b>${st.text}</b>の共同住宅を新築した。専有部分は<b>3戸</b>で、いずれも構造上・利用上の独立性を備える。</p>` +
+          `<p>あわせて、これに隣接する<b>${chiban2.text}</b>の土地（地積 ${area2.toFixed(2)}㎡・所有権）を区分所有者が建物と一体として${yoto2}に使用するため、` +
+          `${date.text}、<b>規約により建物の敷地とする旨を定めた</b>。${corp}は土地家屋調査士${shiho}に登記の申請手続を依頼した。</p>` +
+          `<ul>` +
+          rooms
+            .map(
+              (r) =>
+                `<li>${r.name}号: 壁芯 奥行 ${r.d.toFixed(2)}m × 間口 ${r.w.toFixed(2)}m（壁厚 ${r.t.toFixed(2)}m 一様）</li>`,
+            )
+            .join("") +
+          `<li>敷地利用権は<b>所有権</b>。分離処分可能とする規約の定めはない。</li>` +
+          `<li>敷地権の割合は各専有部分の<b>床面積の割合</b>による。床面積は規則115条（0.01㎡未満切捨て）。</li>` +
+          `</ul>`,
+        coords: [],
+        tasks: rooms
+          .map((r, i) => ({
+            q: `${r.name}号の床面積を求めよ。`,
+            unit: "㎡",
+            answer: r.area,
+            tol: 0.005,
+            pts: 3,
+            expl:
+              `専有部分は<b>内法</b>（規則115条かっこ書）: ` +
+              `(${r.d.toFixed(2)}−${(r.t / 2).toFixed(2)}×2)×(${r.w.toFixed(2)}−${(r.t / 2).toFixed(2)}×2)` +
+              `＝${(r.d - r.t).toFixed(2)}×${(r.w - r.t).toFixed(2)}＝<b>${r.area.toFixed(2)}㎡</b>`,
+          }))
+          .concat([
+            {
+              q: "専有部分の床面積の合計を求めよ（敷地権の割合の分母になる）。",
+              unit: "㎡",
+              answer: total,
+              tol: 0.01,
+              pts: 3,
+              expl:
+                rooms.map((r) => r.area.toFixed(2)).join("＋") +
+                `＝<b>${total.toFixed(2)}㎡</b>。これが敷地権の割合の分母（100倍した整数）になる。`,
+            },
+          ]),
+        appForm: [
+          {
+            label: "登記の目的",
+            answer: ["区分建物表題登記", "区分建物の表題登記"],
+            hint: "不動産種別から書く",
+            pts: 2,
+          },
+          {
+            label: "敷地権の目的である土地の筆数",
+            answer: ["2筆", "2", "二筆"],
+            hint: "法定敷地と規約敷地",
+            pts: 4,
+          },
+          {
+            label: `${chiban1.text}の土地の区分（法定敷地／規約敷地）`,
+            answer: ["法定敷地", "法定の敷地"],
+            hint: "建物が所在している土地",
+            pts: 3,
+          },
+          {
+            label: `${chiban2.text}の土地の区分（法定敷地／規約敷地）`,
+            answer: ["規約敷地", "規約による敷地"],
+            hint: "規約で敷地と定めた土地",
+            pts: 3,
+          },
+          {
+            label: "敷地権の種類",
+            answer: "所有権",
+            hint: "敷地利用権の種類をそのまま書く",
+            pts: 2,
+          },
+          {
+            label: `${rooms[0].name}号の敷地権の割合（「◯分の◯」の形で）`,
+            answer: [`${den}分の${num}`, `${den}分の${num}`],
+            hint: "約分しない。分母は専有部分の床面積の合計",
+            pts: 5,
+          },
+          {
+            label: "敷地権の登記原因及びその日付（原因のみ）",
+            answer: ["敷地権", "敷地権発生"],
+            hint: "一棟や専有部分の原因欄とは書く内容が違う",
+            pts: 3,
+          },
+        ],
+        verify: {
+          kind: "kiyakushikichi",
+          rooms: rooms.map((r) => r.area),
+          total: total,
+          den: den,
+          num: num,
+          hittei: 2,
+        },
+        figure: null,
+        figureChecks: wgFigChecks("tatemonoZumen"),
+      };
+    },
+  },
 ];

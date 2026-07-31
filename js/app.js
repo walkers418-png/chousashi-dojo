@@ -3203,8 +3203,12 @@ function renderWritten(id, opts) {
       <p class="muted small" style="margin:-4px 0 8px">問題番号 #${w.seed}（この番号の問題は同じ内容で再現できます）</p>
       ${w.statement}
       ${coordsTable}
-      <canvas class="fig" id="figCanvas" width="640" height="480"></canvas>
-      <p class="muted small">▲ 問題図。紙と三角定規・電卓で作図してから採点してください（採点後に「作図ステップ」で段階確認できます）。</p>
+      ${
+        w.figure
+          ? `<canvas class="fig" id="figCanvas" width="640" height="480"></canvas>
+      <p class="muted small">▲ 問題図。紙と三角定規・電卓で作図してから採点してください（採点後に「作図ステップ」で段階確認できます）。</p>`
+          : `<p class="muted small">この登記は<b>図面の提供を要しない</b>ため問題図はありません。申請書の記載に集中すること。</p>`
+      }
       <hr class="sep">
       <h3>計算問題</h3>
       ${tasksHtml}
@@ -3351,14 +3355,18 @@ function renderWritten(id, opts) {
           <div class="sb-row"><span>申請書</span><span>${formGot} / ${formMax}点</span></div>
           <div class="sb-bar"><div style="width:${pctBar(formGot, formMax)}%"></div></div>
         </div>
-        <div class="fig-steps" id="figSteps">
+        ${
+          w.figure
+            ? `<div class="fig-steps" id="figSteps">
           <span class="muted small">作図ステップ:</span>
           <button class="chip" data-fl="0">①問題図</button>
           <button class="chip" data-fl="1">②測点</button>
           <button class="chip" data-fl="2">③分筆線</button>
           <button class="chip active" data-fl="3">④求積</button>
         </div>
-        <p class="muted small">自分の紙の作図とステップで見比べてください。${opts.mock ? "" : "配点は本番に近づけた目安（計算重視）です。"}</p>
+        <p class="muted small">自分の紙の作図とステップで見比べてください。${opts.mock ? "" : "配点は本番に近づけた目安（計算重視）です。"}</p>`
+            : `<p class="muted small">${opts.mock ? "" : "配点は本番に近づけた目安（計算重視）です。"}</p>`
+        }
         ${figChecklistHtml(w)}
         ${
           opts.mock
