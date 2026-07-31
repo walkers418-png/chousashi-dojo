@@ -261,6 +261,37 @@ math.mx { font-size: 1.3em; }
 .fm-head { margin: 14px 0 2px; line-height: 1.6; }
 .fm-head:first-child { margin-top: 0; }
 
+/* 申請書様式（白紙再現）。本番の答案用紙に近い見た目にして、欄の位置を体で覚える。 */
+.af-sheet {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 12px; margin: 4px 0 2px;
+}
+.af-title {
+  text-align: center; font-size: 17px; font-weight: 700;
+  letter-spacing: 0.4em; margin: 2px 0 14px;
+}
+.af-field { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 12px; }
+.af-label { flex: 0 0 auto; font-size: 13px; letter-spacing: 0.2em; }
+.af-blank { flex: 1; border-bottom: 1px solid var(--border); height: 22px; }
+.af-note { font-size: 13px; margin: 12px 0; line-height: 1.9; }
+.af-table-title { font-size: 13px; margin: 16px 0 4px; }
+/* 左端の縦書きラベル（「土地の表示」など）。本番の様式と同じ配置にする。 */
+.af-table-wrap { display: flex; gap: 6px; align-items: stretch; margin: 8px 0 14px; }
+.af-side {
+  flex: 0 0 auto; writing-mode: vertical-rl;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; letter-spacing: 0.2em;
+  border: 1px solid var(--border); border-radius: 6px; padding: 6px 2px;
+  background: var(--surface);
+}
+.af-table-wrap .table-scroll { flex: 1; min-width: 0; }
+table.af-table { font-size: 11.5px; margin: 0; }
+table.af-table th { text-align: center; font-weight: 600; line-height: 1.4; }
+table.af-table td { height: 26px; }
+table.af-table th.af-pre { text-align: center; white-space: nowrap; }
+.af-points { margin: 4px 0 0 18px; font-size: 13.5px; line-height: 1.9; }
+.af-points li { margin-bottom: 10px; }
+
 /* 出題頻度バッジ（根拠は答練63冊の実測。本試験の統計ではない旨は本文で明記） */
 .freq-badge {
   display: inline-block; margin-left: 6px; padding: 1px 8px;

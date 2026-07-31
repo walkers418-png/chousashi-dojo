@@ -2973,12 +2973,110 @@ function renderCalcProblem(type) {
 }
 
 // ─────────── 記述式 ───────────
+// ─────────── 申請書様式（白紙再現用） ───────────
+// 本試験は答案用紙に印刷された申請書の枠を埋める形式。枠の構成を知らないと
+// 計算が合っていても書く場所を間違える。様式を一覧して確認できるようにする。
+function renderAppFormList() {
+  view.innerHTML =
+    `<button class="back" id="backBtn">← 記述式一覧</button>
+    <h2 style="font-size:15px;margin:4px">📄 申請書様式（白紙再現）</h2>
+    <p class="muted small" style="margin:0 4px 10px">登記の種類ごとに欄の構成が違う。<b>どの欄があるか</b>を先に覚えてしまえば、本番は計算結果を流し込むだけになる。まず様式を見ずに紙へ再現し、それから開いて答え合わせすること。</p>` +
+    APP_FORMS.map(
+      (
+        f,
+      ) => `<div class="card clickable" data-af="${f.id}" style="padding:13px 14px">
+        <span class="tag">${esc(f.type)}</span>
+        <div style="margin-top:4px"><b>${esc(f.name)}</b></div>
+        <div class="muted small">${esc(f.use)}</div>
+      </div>`,
+    ).join("");
+  document
+    .getElementById("backBtn")
+    .addEventListener("click", renderWrittenList);
+  view
+    .querySelectorAll("[data-af]")
+    .forEach((el) =>
+      el.addEventListener("click", () => renderAppForm(el.dataset.af)),
+    );
+}
+
+function renderAppForm(id) {
+  const f = APP_FORMS.find((x) => x.id === id);
+  if (!f) return renderAppFormList();
+
+  const blockHtml = (b) => {
+    if (b.kind === "note") return `<p class="af-note">${esc(b.text)}</p>`;
+    if (b.kind === "fields")
+      return b.items
+        .map(
+          (it) =>
+            `<div class="af-field"><span class="af-label">${esc(it)}</span><span class="af-blank"></span></div>`,
+        )
+        .join("");
+    // kind === "table"
+    const title = b.title
+      ? `<p class="af-table-title"><b>${esc(b.title)}</b></p>`
+      : "";
+    // 表の上に来る単独項目（所在・家屋番号など）
+    const pre = (b.pre || [])
+      .map(
+        (p) =>
+          `<tr><th class="af-pre">${esc(p)}</th><td colspan="${b.head.length}"></td></tr>`,
+      )
+      .join("");
+    const head = `<tr>${b.head.map((h) => `<th>${h}</th>`).join("")}</tr>`;
+    const body = Array.from(
+      { length: b.rows },
+      () => `<tr>${b.head.map(() => "<td></td>").join("")}</tr>`,
+    ).join("");
+    // 本番の様式では欄名が左端に縦書きで入る。ただしスマホ幅では長い欄名が
+    // 表の高さを超えて下に余白を作るので、8文字を超えるものは見出しに切り替える。
+    const useSide = b.side && b.side.length <= 8;
+    const side = useSide ? `<div class="af-side">${esc(b.side)}</div>` : "";
+    const caption =
+      b.side && !useSide
+        ? `<p class="af-table-title"><b>${esc(b.side)}</b></p>`
+        : "";
+    return `${title}${caption}<div class="af-table-wrap">${side}<div class="table-scroll"><table class="simple af-table">
+      ${pre ? `<tbody>${pre}</tbody>` : ""}
+      <tbody>${head}${body}</tbody>
+    </table></div></div>`;
+  };
+
+  view.innerHTML = `
+    <button class="back" id="backBtn">← 申請書様式一覧</button>
+    <div class="card">
+      <span class="tag">${esc(f.type)}</span>
+      <h2 style="margin-top:6px">${esc(f.name)}</h2>
+      <p class="muted small" style="margin:-2px 0 10px">${esc(f.use)}</p>
+      <div class="af-sheet">
+        <p class="af-title">登 記 申 請 書</p>
+        ${f.blocks.map(blockHtml).join("")}
+      </div>
+    </div>
+    <div class="card">
+      <h2 style="font-size:15px">記載のポイント</h2>
+      <ul class="af-points">${f.points.map((p) => `<li>${p}</li>`).join("")}</ul>
+    </div>`;
+  document
+    .getElementById("backBtn")
+    .addEventListener("click", renderAppFormList);
+  // ポイント中の条文をタップ可能にする
+  view
+    .querySelectorAll(".af-points")
+    .forEach((el) => linkArticlesInElement(el, null));
+}
+
 function renderWrittenList() {
   const d = Store.load();
   const combos = WRITTEN.filter((w) => w.combo).length;
   view.innerHTML =
     `<h2 style="font-size:15px;margin:4px">記述式（書式）実践問題</h2>
     <p class="muted small" style="margin:0 4px 6px">紙と電卓と三角定規を用意して、実際に作図・申請書を書いてから答え合わせすること。</p>
+    <div class="card clickable" id="afEntry" style="padding:13px 14px;border:1px solid var(--accent-deep)">
+      <b style="color:var(--accent)">📄 申請書様式（白紙再現）</b>
+      <div class="muted small">登記の種類ごとの欄の構成を確認する。まず紙に再現してから開くこと。</div>
+    </div>
     <p class="small" style="margin:0 4px 10px;color:var(--accent)">🎲 <b>開くたびに問題が変わります</b>（座標値・地目・地番・当事者・日付を毎回振り直し）。うち${combos}問は<b>登記の組み合わせ問題</b>で、申請件数と登記の目的まで問われます。</p>` +
     WRITTEN.map((w) => {
       const r = d.written[w.id];
@@ -2996,6 +3094,9 @@ function renderWrittenList() {
     .forEach((el) =>
       el.addEventListener("click", () => renderWritten(el.dataset.w)),
     );
+  document
+    .getElementById("afEntry")
+    .addEventListener("click", renderAppFormList);
 }
 
 // 作図の自己採点チェックリスト。
