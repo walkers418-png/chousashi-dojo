@@ -1622,8 +1622,13 @@ function renderMixResult() {
 let fullMockState = null;
 
 function startFullMock() {
+  // 本試験の記述式は「土地1問＋建物または区分建物1問」（区分建物は隔年で出る傾向）。
+  // 2問目は建物と区分建物をまとめた母集団から引く。分けてしまうと区分建物が
+  // 一度も出ないまま本番を迎えることになる。
   const tochi = WRITTEN.filter((w) => w.type === "土地");
-  const tatemono = WRITTEN.filter((w) => w.type === "建物");
+  const tatemono = WRITTEN.filter(
+    (w) => w.type === "建物" || w.type === "区分建物",
+  );
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
   const wIds = [];
   if (tochi.length) wIds.push(pick(tochi).id);
@@ -1706,19 +1711,48 @@ function renderFullMockResult() {
   fullMockState = null;
   const tm = document.getElementById("mockTimer");
   if (tm) tm.remove();
-  const qPts = (st.qOk * 2.5).toFixed(1);
+  // 本試験の配点に合わせて100点満点に換算する。
+  // 択一 20問×2.5点＝50点／記述 2問×25点＝50点。
+  // 記述はテンプレートごとに満点（ルーブリックの合計）が違うので、得点率で50点へ直す。
+  const qPts = st.qOk * 2.5;
   const wScore = st.wScores.reduce((a, b) => a + b.score, 0);
   const wMax = st.wScores.reduce((a, b) => a + b.total, 0);
+  const wPts = wMax ? (wScore / wMax) * 50 : 0;
+  const totalPts = qPts + wPts;
   const usedMin = Math.round((Date.now() - st.start) / 60000);
+  const overTime = usedMin > 150;
+
+  // 例年の目安（STUDY_PLAN.md）。年度で動くので「目安」として示す。
+  const QUIZ_LINE = 32.5; // 択一の基準点の目安
+  const WRITTEN_LINE = 30; // 記述の基準点の目安
+  const PASS_LINE = 73; // 合格点の目安（例年70〜75点前後）
+  const mark = (ok) =>
+    ok
+      ? '<span class="ok-text">到達</span>'
+      : '<span class="ng-text">未達</span>';
+
   view.innerHTML = `
     <div class="card" style="text-align:center">
       <div class="kicker">📝 本番フル模試 結果</div>
-      <div style="font-size:15px;margin:6px 0">所要 約${usedMin}分 / 150分</div>
-      <div class="statgrid">
-        <div class="stat"><div class="v">${st.qOk}<span style="font-size:14px;font-weight:400">/20</span></div><div class="l">択一（${qPts}点換算）</div></div>
-        <div class="stat"><div class="v">${wScore}<span style="font-size:14px;font-weight:400">/${wMax}</span></div><div class="l">記述（配点換算）</div></div>
+      <div style="font-size:34px;font-weight:800" class="mono">${totalPts.toFixed(1)}<span style="font-size:16px;font-weight:400"> / 100点</span></div>
+      <div style="font-size:14px;margin:2px 0 8px" class="${overTime ? "ng-text" : "muted"}">
+        所要 約${usedMin}分 / 150分${overTime ? `（${usedMin - 150}分 超過）` : ""}
       </div>
-      <p class="muted small" style="margin-top:8px">択一は1問2.5点（基準点の目安32.5点）。記述は申請書・計算の穴埋め正答数です（作図・記述の質は本番採点と異なります）。</p>
+      <div class="statgrid">
+        <div class="stat"><div class="v">${qPts.toFixed(1)}<span style="font-size:14px;font-weight:400">/50</span></div><div class="l">択一 ${st.qOk}/20問</div></div>
+        <div class="stat"><div class="v">${wPts.toFixed(1)}<span style="font-size:14px;font-weight:400">/50</span></div><div class="l">記述 ${wScore}/${wMax}点分</div></div>
+      </div>
+      <table class="simple" style="margin-top:12px;text-align:left">
+        <tr><th>判定の目安</th><th>基準</th><th>結果</th></tr>
+        <tr><td>択一の基準点</td><td class="num">${QUIZ_LINE}点</td><td>${mark(qPts >= QUIZ_LINE)}</td></tr>
+        <tr><td>記述の基準点</td><td class="num">${WRITTEN_LINE}点</td><td>${mark(wPts >= WRITTEN_LINE)}</td></tr>
+        <tr><td>合格点</td><td class="num">${PASS_LINE}点</td><td>${mark(totalPts >= PASS_LINE)}</td></tr>
+        <tr><td>時間内完答</td><td class="num">150分</td><td>${mark(!overTime)}</td></tr>
+      </table>
+      <p class="muted small" style="margin-top:10px;text-align:left">
+        基準点・合格点は<b>例年の目安</b>で、年度によって動きます（択一30〜37.5点・記述30点前後・合格70〜75点前後）。<br>
+        記述は<b>申請書と計算の穴埋めの正答率</b>を50点に換算したものです。<b>作図の出来は採点に含まれていません</b>ので、本番の得点とは一致しません。
+      </p>
       <button class="btn" id="againBtn">もう一度フル模試</button>
       <button class="btn secondary" id="menuBtn">メニューへ戻る</button>
     </div>`;
