@@ -603,6 +603,14 @@ function renderSearchResults(query) {
     .forEach((el) => linkArticlesInElement(el));
 }
 
+// 講義のレベル表示。必修＝本試験で問われる核／発展＝周辺論点・例外。
+// 忙しいときは必修だけ、余裕があれば発展まで、と読み分けられるようにする。
+function levelBadge(level) {
+  if (level === "発展") return '<span class="lv-badge lv-adv">発展</span>';
+  if (level === "必修") return '<span class="lv-badge lv-core">必修</span>';
+  return "";
+}
+
 function renderLectureList() {
   const cats = [...new Set(LECTURES.map((l) => l.cat))];
   const browseHtml =
@@ -616,7 +624,7 @@ function renderLectureList() {
           .map(
             (l) =>
               `<div class="card clickable" data-lec="${l.id}" style="padding:13px 14px">
-          <span class="tag">${esc(l.cat)}</span>${impBadge(LECTURE_IMP[l.id])}
+          <span class="tag">${esc(l.cat)}</span>${levelBadge(l.level)}${impBadge(LECTURE_IMP[l.id])}
           <div style="margin-top:5px">${esc(l.title)}</div>
         </div>`,
           )
@@ -647,7 +655,7 @@ function renderLecture(id) {
   view.innerHTML = `
     <button class="back" id="backBtn">← 講義一覧へ</button>
     <div class="card">
-      <span class="tag">${esc(l.cat)}</span>${impBadge(LECTURE_IMP[l.id])}${TTS.supported || ZAUDIO.has("lec_" + l.id) ? `<button class="spk" id="lecSpk" title="講義を音声で聴く">🔊${ZAUDIO.has("lec_" + l.id) ? "🫛" : ""}</button>` : ""}
+      <span class="tag">${esc(l.cat)}</span>${levelBadge(l.level)}${impBadge(LECTURE_IMP[l.id])}${TTS.supported || ZAUDIO.has("lec_" + l.id) ? `<button class="spk" id="lecSpk" title="講義を音声で聴く">🔊${ZAUDIO.has("lec_" + l.id) ? "🫛" : ""}</button>` : ""}
       <h2 style="margin-top:6px">${esc(l.title)}</h2>
       <div class="lecture-body">${l.body}</div>
       <button class="btn secondary" id="toQuiz">この分野の択一を解く →</button>

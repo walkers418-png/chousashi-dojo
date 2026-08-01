@@ -292,6 +292,14 @@ table.af-table th.af-pre { text-align: center; white-space: nowrap; }
 .af-points { margin: 4px 0 0 18px; font-size: 13.5px; line-height: 1.9; }
 .af-points li { margin-bottom: 10px; }
 
+/* 講義のレベル（必修／発展） */
+.lv-badge {
+  display: inline-block; margin-left: 6px; padding: 1px 8px;
+  border-radius: 999px; font-size: 11px; font-weight: 700; vertical-align: middle;
+}
+.lv-core { background: rgba(239,83,80,.14); color: #ef9a9a; border: 1px solid rgba(239,83,80,.4); }
+.lv-adv  { background: rgba(158,158,158,.14); color: #b0bec5; border: 1px solid rgba(158,158,158,.35); }
+
 /* 出題頻度バッジ（根拠は答練63冊の実測。本試験の統計ではない旨は本文で明記） */
 .freq-badge {
   display: inline-block; margin-left: 6px; padding: 1px 8px;
