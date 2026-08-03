@@ -3213,5 +3213,130 @@ A: 120×(106−104)=240<br>P: 120×(114−100)=1680<br>Q: 100×(104−106)=−20
 ⑦ 一棟の表示の変更は<b>1人の申請で足りる</b>（専有部分の床面積は各自1か月）</div>
 `,
   },
+  {
+    id: "L47",
+    cat: "建物",
+    level: "必修",
+    title: "建物⑦ 床面積の測り方（必修・構造別にどの線で測るか）",
+    body: `
+<div class="pt"><b>この講義の結論</b><br>
+① 原則は<b>区画の中心線</b>。区分建物の専有部分だけ<b>区画の内側線</b>（<a class="art" data-art="規則115">規則115条</a>）<br>
+② <b>木造</b>は、壁の厚さや形状にかかわらず<b>柱の中心線</b><br>
+③ <b>鉄骨造</b>は<b>被覆の状態で3通りに変わる</b>——外側被覆／両側被覆／柱の外側に壁<br>
+④ <b>鉄筋コンクリート造・鉄筋コンクリート造及びコンクリートブロック造</b>の壁構造は<b>壁の中心線</b><br>
+⑤ 各階の<b>壁の厚さが異なる</b>ときは、<b>各階ごとに</b>壁の中心線で測る<br>
+⑥ 端数は<b>1/100㎡未満を切捨て</b>（四捨五入ではない）</div>
+
+<p>床面積は「どこを測るか」で答えが変わる。規則115条は「区画の中心線」としか書いていないので、<b>何が区画を作っているのか</b>を構造ごとに判断する必要がある。ここを構造別に確定させる。</p>
+
+<h4>1. 木造 — 柱の中心線</h4>
+<div class="pt">木造の場合、<b>壁の厚さ又は形状にかかわらず</b>、<b>柱の中心線</b>で囲まれた部分の水平投影面積による。</div>
+<div class="why">木造は<b>柱で支える構造</b>である。壁は柱の間を埋めているにすぎず、建物の骨格ではない。だから区画を作っているのは柱であり、柱の中心線で測る。<br>
+<b>壁の厚さや形状は関係ない</b>という点が重要である。壁が厚くても薄くても、外側に張り出していても、見るのは柱である。</div>
+<svg viewBox="0 0 340 116" class="lecfig" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="木造は柱の中心線で測る">
+<text x="170" y="15" text-anchor="middle" fill="#4fc3f7" font-size="11" font-weight="bold">木造 — 壁は無視して柱の中心線</text>
+<rect x="70" y="28" width="200" height="62" fill="none" stroke="#8fa0ae" stroke-width="7"/>
+<rect x="60" y="30" width="20" height="20" fill="#5b6b78"/>
+<rect x="260" y="30" width="20" height="20" fill="#5b6b78"/>
+<rect x="60" y="68" width="20" height="20" fill="#5b6b78"/>
+<rect x="260" y="68" width="20" height="20" fill="#5b6b78"/>
+<line x1="70" y1="40" x2="270" y2="40" stroke="#66bb6a" stroke-width="2" stroke-dasharray="6 3"/>
+<line x1="70" y1="78" x2="270" y2="78" stroke="#66bb6a" stroke-width="2" stroke-dasharray="6 3"/>
+<line x1="70" y1="40" x2="70" y2="78" stroke="#66bb6a" stroke-width="2" stroke-dasharray="6 3"/>
+<line x1="270" y1="40" x2="270" y2="78" stroke="#66bb6a" stroke-width="2" stroke-dasharray="6 3"/>
+<text x="170" y="62" text-anchor="middle" fill="#66bb6a" font-size="10" font-weight="bold">柱の中心線</text>
+<text x="170" y="106" text-anchor="middle" fill="#8fa0ae" font-size="8.5">■＝柱　灰色の帯＝壁（厚さ・形状は問わない）</text>
+</svg>
+
+<h4>2. 鉄骨造 — 被覆の状態で3通り</h4>
+<p>鉄骨造は<b>柱をどう覆っているか</b>で測る線が変わる。3つを取り違えないこと。</p>
+<table class="simple">
+<tr><th>状態</th><th>測る線</th></tr>
+<tr><td><b>① 外側被覆</b>（柱の外側だけを覆っている）</td><td><b>柱の外面を結ぶ線</b></td></tr>
+<tr><td><b>② 両側被覆</b>（柱の両側が被覆されている）</td><td><b>柱の中心線</b></td></tr>
+<tr><td><b>③ 柱の外側に壁がある</b></td><td><b>壁の中心線</b></td></tr>
+</table>
+<svg viewBox="0 0 340 152" class="lecfig" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="鉄骨造の3パターン">
+<text x="170" y="15" text-anchor="middle" fill="#4fc3f7" font-size="11" font-weight="bold">鉄骨造 — 覆い方で測る線が動く</text>
+<text x="56" y="34" text-anchor="middle" fill="#ffb74d" font-size="9.5" font-weight="bold">① 外側被覆</text>
+<rect x="36" y="42" width="40" height="40" fill="#5b6b78"/>
+<rect x="30" y="42" width="6" height="40" fill="#8fa0ae"/>
+<line x1="76" y1="38" x2="76" y2="90" stroke="#ef5350" stroke-width="2.4"/>
+<text x="56" y="102" text-anchor="middle" fill="#ef9a9a" font-size="8.5">柱の外面を</text>
+<text x="56" y="113" text-anchor="middle" fill="#ef9a9a" font-size="8.5">結ぶ線</text>
+<text x="170" y="34" text-anchor="middle" fill="#ffb74d" font-size="9.5" font-weight="bold">② 両側被覆</text>
+<rect x="150" y="42" width="40" height="40" fill="#5b6b78"/>
+<rect x="144" y="42" width="6" height="40" fill="#8fa0ae"/>
+<rect x="190" y="42" width="6" height="40" fill="#8fa0ae"/>
+<line x1="170" y1="38" x2="170" y2="90" stroke="#66bb6a" stroke-width="2.4"/>
+<text x="170" y="102" text-anchor="middle" fill="#66bb6a" font-size="8.5">柱の中心線</text>
+<text x="284" y="34" text-anchor="middle" fill="#ffb74d" font-size="9.5" font-weight="bold">③ 外側に壁</text>
+<rect x="264" y="42" width="40" height="40" fill="#5b6b78"/>
+<rect x="250" y="42" width="14" height="40" fill="#8fa0ae"/>
+<line x1="257" y1="38" x2="257" y2="90" stroke="#4fc3f7" stroke-width="2.4"/>
+<text x="284" y="102" text-anchor="middle" fill="#4fc3f7" font-size="8.5">壁の中心線</text>
+<text x="170" y="130" text-anchor="middle" fill="#8fa0ae" font-size="8.5">■＝柱　灰色＝被覆材・壁</text>
+<text x="170" y="144" text-anchor="middle" fill="#cfd8df" font-size="9">覆いが片側だけなら外面／両側なら中心／壁があれば壁の中心</text>
+</svg>
+<div class="why">順に理屈を追う。<br>
+<b>①外側被覆</b>——柱の外側だけが覆われている。内側は柱がむき出しなので、<b>柱そのものが室内側の区画</b>になる。外側の被覆は薄い仕上げにすぎないから、区画線は<b>柱の外面を結ぶ線</b>に置く。<br>
+<b>②両側被覆</b>——柱の両側が覆われている。柱と被覆が一体となって壁のように働くので、<b>その中心＝柱の中心線</b>で測る。木造と同じ扱いになる。<br>
+<b>③柱の外側に壁</b>——柱ではなく<b>壁が区画を作っている</b>。この場合は原則どおり<b>壁の中心線</b>である。</div>
+<div class="trap">3つは連続的に変化する。<b>覆いが増えるほど測る線が外へ動く</b>のではなく、<b>何が区画を作っているか</b>が切り替わる。<br>
+「鉄骨造だから柱で測る」と機械的に決めると、③を外す。</div>
+
+<h4>3. 鉄筋コンクリート造・鉄筋コンクリート造及びコンクリートブロック造</h4>
+<div class="pt"><b>壁構造</b>の場合は、<b>壁の中心線</b>で囲まれた部分の水平投影面積による。</div>
+<div class="why">鉄筋コンクリート造の壁構造では、<b>壁そのものが構造体</b>である。柱で支えるのではなく壁で支えるので、区画を作っているのは壁である。だから壁の中心線で測る。<br>
+木造・鉄骨造が「柱の構造」であるのに対し、こちらは「壁の構造」——<b>何が建物を支えているか</b>が測る線を決めている。</div>
+
+<h4>4. 各階の壁の厚さが異なるとき</h4>
+<div class="pt">壁構造の場合で、<b>各階の壁の厚さが異なる</b>ときは、<b>各階ごとに</b>壁の中心線で囲まれた部分の水平投影面積による。</div>
+<svg viewBox="0 0 340 138" class="lecfig" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="各階の壁厚が異なる場合">
+<text x="170" y="15" text-anchor="middle" fill="#4fc3f7" font-size="11" font-weight="bold">外壁面が同じ鉛直面でも床面積は階ごとに違う</text>
+<rect x="90" y="26" width="160" height="30" fill="none" stroke="#8fa0ae" stroke-width="5"/>
+<line x1="92.5" y1="41" x2="247.5" y2="41" stroke="#66bb6a" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="265" y="45" fill="#66bb6a" font-size="9">3階 壁薄い</text>
+<rect x="90" y="58" width="160" height="30" fill="none" stroke="#8fa0ae" stroke-width="9"/>
+<line x1="94.5" y1="73" x2="245.5" y2="73" stroke="#ffb74d" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="265" y="77" fill="#ffb74d" font-size="9">2階 壁厚い</text>
+<rect x="90" y="90" width="160" height="30" fill="none" stroke="#8fa0ae" stroke-width="5"/>
+<line x1="92.5" y1="105" x2="247.5" y2="105" stroke="#66bb6a" stroke-width="2" stroke-dasharray="5 3"/>
+<text x="265" y="109" fill="#66bb6a" font-size="9">1階 壁薄い</text>
+<text x="170" y="134" text-anchor="middle" fill="#cfd8df" font-size="9">壁が厚い階ほど中心線が内側に寄り、床面積は<tspan font-weight="bold">小さくなる</tspan></text>
+</svg>
+<div class="trap">外壁面が1階から3階まで<b>同一の鉛直面に含まれていても</b>、各階の壁の厚さが違えば<b>中心線の位置が変わる</b>ので、床面積は階ごとに異なる。<br>
+「外壁面がそろっているのだから各階同じ床面積になる」という肢は<b>誤り</b>である。見るのは外壁面ではなく<b>中心線</b>。</div>
+
+<h4>5. 区分建物の専有部分は内法</h4>
+<p>ここまでは<b>建物（一棟）</b>の話である。区分建物の<b>専有部分</b>だけは規則115条かっこ書により<b>区画の内側線</b>で測る。</p>
+<table class="simple">
+<tr><th>対象</th><th>測る線</th></tr>
+<tr><td>一般の建物・区分建物の<b>一棟の建物</b></td><td>区画の<b>中心線</b>（構造により柱／壁）</td></tr>
+<tr><td>区分建物の<b>専有部分</b></td><td>区画の<b>内側線</b>（内法）</td></tr>
+</table>
+<div class="ex"><b>内法の計算</b><br>
+壁芯寸法を L、壁厚を t とすると、壁芯は壁の中心なので<b>両側の壁面までそれぞれ t/2</b> ある。<br>
+内法 ＝ L − (t/2)×2 ＝ <b>L − t</b><br>
+例：壁芯 10.00m・壁厚 0.30m → 10.00 − 0.15×2 ＝ <b>9.70m</b>。<b>引くのは片側 t/2 ずつ、合計 t</b> である。</div>
+
+<h4>6. 端数処理</h4>
+<p>床面積の端数は<b>1平方メートルの100分の1未満を切り捨てる</b>。<b>四捨五入ではない</b>点が繰り返し問われる。</p>
+
+<h4>7. 本試験ではこう出る</h4>
+<p><b>択一</b>——構造別の測り方を5肢に散らした問題が典型。<b>鉄骨造の3パターン</b>と、<b>各階の壁厚が異なる場合</b>が狙われる。「外壁面が同一の鉛直面なら各階同じ」は定番の誤り。</p>
+<p><b>記述</b>——一棟の床面積（中心線）と専有部分の床面積（内法）を両方計算させられる。<b>問題文の構造の表示</b>（木造／鉄骨造／鉄筋コンクリート造）と<b>被覆の記述</b>を読み落とすと、測る線を間違えて全滅する。</p>
+
+<div class="pt"><b>床面積の測り方カード</b><br>
+① 原則は<b>区画の中心線</b>／区分建物の専有部分だけ<b>内側線</b><br>
+② <b>木造</b>＝壁の厚さ・形状にかかわらず<b>柱の中心線</b><br>
+③ <b>鉄骨造・外側被覆</b>＝<b>柱の外面を結ぶ線</b><br>
+④ <b>鉄骨造・両側被覆</b>＝<b>柱の中心線</b><br>
+⑤ <b>鉄骨造・柱の外側に壁</b>＝<b>壁の中心線</b><br>
+⑥ <b>RC造・RC及びCB造の壁構造</b>＝<b>壁の中心線</b><br>
+⑦ <b>各階の壁厚が異なる</b>ときは<b>各階ごとに</b>中心線で測る<br>
+⑧ 端数は<b>1/100㎡未満切捨て</b>（四捨五入ではない）</div>
+`,
+  },
   // @ingest-append:lectures — ingest.mjs はこの行の直前に新規エントリを挿入する（手動追加もこの上に）
 ];

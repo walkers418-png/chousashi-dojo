@@ -481,6 +481,82 @@ const CalcGen = {
       };
     },
   },
+  // 構造別に「どの線で測るか」を判断させる。測り方を誤ると求積そのものが崩れる。
+  floorLine: {
+    name: "床面積の区画線（構造別に測る線を判断）",
+    desc: "木造＝柱の中心線／鉄骨造は被覆で3通り／RC壁構造＝壁の中心線",
+    group: "求積・面積",
+    gen() {
+      const U = CalcUtil;
+      // 柱の中心間の距離を基準にし、被覆・壁の厚さを与える
+      const cx = U.ri(8000, 14000) / 1000; // 柱の中心間（間口）
+      const cy = U.ri(6000, 11000) / 1000; // 柱の中心間（奥行）
+      const col = U.pick([0.2, 0.25, 0.3, 0.4]); // 柱の見付き
+      const wall = U.pick([0.12, 0.15, 0.18, 0.2]); // 壁の厚さ
+
+      const cases = [
+        {
+          key: "木造",
+          text: `<b>木造</b>2階建ての1階部分。柱の中心間の距離は <b>${cx.toFixed(3)}m × ${cy.toFixed(3)}m</b>。柱の見付きは <b>${col.toFixed(2)}m</b>、外壁の厚さは <b>${wall.toFixed(2)}m</b> である。`,
+          w: cx,
+          d: cy,
+          line: "柱の中心線",
+          why: `木造は<b>壁の厚さ又は形状にかかわらず柱の中心線</b>による。柱の中心間の距離がそのまま辺長になる。壁の厚さ ${wall.toFixed(2)}m は<b>使わない</b>。`,
+        },
+        {
+          key: "鉄骨造・外側被覆",
+          text: `<b>鉄骨造</b>3階建ての2階部分。柱の中心間の距離は <b>${cx.toFixed(3)}m × ${cy.toFixed(3)}m</b>、柱の見付きは <b>${col.toFixed(2)}m</b>。柱は<b>外側のみが被覆</b>されており、内側は露出している。`,
+          w: cx + col,
+          d: cy + col,
+          line: "柱の外面を結ぶ線",
+          why: `外側だけ被覆されている鉄骨造は<b>柱の外面を結ぶ線</b>による。柱の中心から外面までは見付きの半分 ${(col / 2).toFixed(3)}m なので、両側で ${col.toFixed(2)}m 広がる。`,
+        },
+        {
+          key: "鉄骨造・両側被覆",
+          text: `<b>鉄骨造</b>3階建ての2階部分。柱の中心間の距離は <b>${cx.toFixed(3)}m × ${cy.toFixed(3)}m</b>、柱の見付きは <b>${col.toFixed(2)}m</b>。柱は<b>両側が被覆</b>されている。`,
+          w: cx,
+          d: cy,
+          line: "柱の中心線",
+          why: `両側が被覆された鉄骨造は<b>柱の中心線</b>による（木造と同じ扱い）。柱の中心間の距離がそのまま辺長になる。`,
+        },
+        {
+          key: "鉄骨造・柱の外側に壁",
+          text: `<b>鉄骨造</b>3階建ての2階部分。柱の中心間の距離は <b>${cx.toFixed(3)}m × ${cy.toFixed(3)}m</b>、柱の見付きは <b>${col.toFixed(2)}m</b>。<b>柱の外側に厚さ ${wall.toFixed(2)}m の壁</b>があり、壁の内面は柱の外面と接している。`,
+          w: cx + col + wall,
+          d: cy + col + wall,
+          line: "壁の中心線",
+          why: `柱の外側に壁があるときは<b>壁の中心線</b>による。柱の中心→柱の外面が ${(col / 2).toFixed(3)}m、そこから壁の中心まで ${(wall / 2).toFixed(3)}m。両側で ${(col + wall).toFixed(2)}m 広がる。`,
+        },
+        {
+          key: "鉄筋コンクリート造（壁構造）",
+          text: `<b>鉄筋コンクリート造</b>3階建ての2階部分は<b>壁構造</b>である。壁の内のり寸法は <b>${cx.toFixed(3)}m × ${cy.toFixed(3)}m</b>、壁の厚さは一様に <b>${wall.toFixed(2)}m</b> である。`,
+          w: cx + wall,
+          d: cy + wall,
+          line: "壁の中心線",
+          why: `壁構造は<b>壁の中心線</b>による。内のりから壁の中心までは片側 ${(wall / 2).toFixed(3)}m なので、両側で ${wall.toFixed(2)}m 広がる。`,
+        },
+      ];
+      const c = U.pick(cases);
+      const area = c.w * c.d;
+      const ans = U.floor2(area);
+      return {
+        html: `<p>${c.text}</p><p>この階の<b>床面積</b>を求めよ（規則115条による）。</p>`,
+        fields: [
+          {
+            label: "床面積（㎡・小数第2位）",
+            kind: "num",
+            answer: ans,
+            tol: 0.001,
+          },
+        ],
+        solution: `<p><b>測る線: ${c.line}</b></p>
+<p>${c.why}</p>
+<p>辺長 ${c.w.toFixed(3)}m × ${c.d.toFixed(3)}m ＝ ${area.toFixed(4)}㎡</p>
+<p>1/100㎡未満<b>切捨て</b>（規則115条）⟹ <b>${ans.toFixed(2)}㎡</b></p>
+<p class="muted small"><b>構造別のまとめ</b>: 木造＝柱の中心線／鉄骨造は<b>外側被覆＝柱の外面を結ぶ線・両側被覆＝柱の中心線・柱の外側に壁＝壁の中心線</b>／鉄筋コンクリート造等の壁構造＝壁の中心線。区分建物の専有部分だけは<b>内側線（内法）</b>。</p>`,
+      };
+    },
+  },
 
   // ⑥ 4点指定の2直線交点
   intersect4: {
@@ -1143,6 +1219,12 @@ const CALC_FREQ = {
     weight: 9,
     note: "記述式の建物は毎回床面積の認定・計算がある",
   },
+  floorLine: {
+    rank: "high",
+    vol: 63,
+    weight: 7,
+    note: "構造の表示から測る線を判断させる。誤ると求積全体が崩れる",
+  },
   parallel: {
     rank: "high",
     vol: 39,
@@ -1291,6 +1373,6 @@ const CALC_GROUPS = [
       "traverseAdjust",
     ],
   },
-  { label: "求積・面積", types: ["area", "floor"] },
+  { label: "求積・面積", types: ["area", "floor", "floorLine"] },
 ];
 const CALC_TYPES = CALC_GROUPS.flatMap((g) => g.types);
