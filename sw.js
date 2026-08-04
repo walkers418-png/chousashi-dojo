@@ -1,5 +1,5 @@
 // オフライン対応 Service Worker
-const CACHE = "chousashi-dojo-v93";
+const CACHE = "chousashi-dojo-v94";
 const ASSETS = [
   "./",
   "./index.html",
@@ -43,8 +43,14 @@ self.addEventListener("activate", (e) => {
 
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return; // GET以外はキャッシュ対象外
+  // SW内の fetch は既定でブラウザのHTTPキャッシュを見るため、更新したはずのJSが
+  // 古いまま返ることがある。no-cache で必ずサーバに検証させる（304なら本文は転送されない）。
+  const fresh = new Request(e.request.url, {
+    cache: "no-cache",
+    credentials: "same-origin",
+  });
   e.respondWith(
-    fetch(e.request)
+    fetch(fresh)
       .then((res) => {
         // 200の完全応答のみキャッシュ。206(音声シーク等の部分応答)は put が例外になるため除外。
         if (res && res.status === 200 && res.type === "basic") {

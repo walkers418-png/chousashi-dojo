@@ -40,6 +40,14 @@ function gotoTab(tab) {
   render(tab);
 }
 
+// フェーズの開始日表示。S1 の from は「方針変更前に開いてもフェーズ未定にしない」ための
+// 過去日センチネルなので、そのまま出さず本気モード開始日（fullStartDate）に読み替える。
+function phaseFrom(phase) {
+  return phase.from < SCHEDULE.fullStartDate
+    ? SCHEDULE.fullStartDate
+    : phase.from;
+}
+
 // ─────────── 今日の学習 ───────────
 function renderToday() {
   const phase = currentPhase();
@@ -136,7 +144,7 @@ function renderToday() {
       <div style="font-size:34px;font-weight:800" class="mono">${dte}<span style="font-size:15px;font-weight:400"> 日</span></div>
       <div class="muted small">${esc(examYearLabel())} 筆記試験（${SCHEDULE.examDate}・午前の部は測量士補で免除申請）</div>
       <div class="progressbar"><div style="width:${pct}%"></div></div>
-      <div class="kicker" style="margin-top:8px">${esc(phase.name)}（${phase.from} 〜 ${phase.to}）</div>
+      <div class="kicker" style="margin-top:8px">${esc(phase.name)}（${phaseFrom(phase)} 〜 ${phase.to}）</div>
       <p class="small">${esc(phase.goal)}</p>
     </div>
     <div class="card" style="padding:13px 14px">
