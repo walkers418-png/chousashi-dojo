@@ -362,6 +362,34 @@ table.af-table th.af-pre { text-align: center; white-space: nowrap; }
   padding: 10px 12px; margin: 10px 0; font-size: 13.5px;
 }
 .lecture-body .why::before { content: "💡 なぜそうなるか "; font-weight: 700; color: var(--warn); }
+/* 判例カード：事案→争点→結論→理由 を必ずこの順で書く。結論だけ覚えると
+   事案が少しずれた肢に対応できないため、講義では事実関係から示す。 */
+.lecture-body .hanrei {
+  background: rgba(186,104,200,.08); border: 1px solid rgba(186,104,200,.35);
+  border-radius: 10px; padding: 10px 12px; margin: 12px 0; font-size: 13.5px;
+}
+.lecture-body .hanrei::before { content: "⚖️ 判例 "; font-weight: 700; color: #ce93d8; }
+.lecture-body .hanrei .hl { display: block; margin-top: 7px; }
+.lecture-body .hanrei .hl b:first-child { color: #ce93d8; }
+/* 演習：読むだけで終わらせないための小問。答えは details で隠す。 */
+.lecture-body .drill {
+  background: rgba(255,167,38,.07); border: 1px solid rgba(255,167,38,.32);
+  border-radius: 10px; padding: 10px 12px; margin: 12px 0; font-size: 13.5px;
+}
+.lecture-body .drill::before { content: "✍️ 確認問題 "; font-weight: 700; color: var(--warn); }
+.lecture-body .drill ol { margin: 8px 0 0 20px; }
+.lecture-body .drill li { margin-bottom: 6px; }
+.lecture-body details {
+  margin-top: 9px; border-top: 1px dashed var(--border); padding-top: 8px;
+}
+.lecture-body details > summary {
+  cursor: pointer; color: var(--accent); font-weight: 700; font-size: 13px;
+  list-style: none; user-select: none;
+}
+.lecture-body details > summary::-webkit-details-marker { display: none; }
+.lecture-body details > summary::before { content: "▶ "; }
+.lecture-body details[open] > summary::before { content: "▼ "; }
+.lecture-body details > summary + * { margin-top: 8px; }
 .lecture-body table.simple { font-size: 12.5px; }
 
 canvas.fig { width: 100%; background: #fff; border-radius: 10px; margin: 10px 0; }

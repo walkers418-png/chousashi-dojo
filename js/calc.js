@@ -32,6 +32,11 @@ const CalcUtil = {
   r3(v) {
     return Math.round(v * 1000) / 1000;
   },
+  // 面積の中間値用。cm単位(小数第2位)の辺長どうしの積は必ず小数第4位までに収まるので、
+  // ここで丸めておくと表示した数値と答えが完全に一致する（浮動小数の誤差を落とす）。
+  r4(v) {
+    return Math.round(v * 10000) / 10000;
+  },
   f2(v) {
     return (Math.round(v * 100) / 100).toFixed(2);
   },
@@ -174,6 +179,173 @@ function roundBearingToMin(deg) {
   let tm = Math.round((((deg % 360) + 360) % 360) * 60);
   if (tm >= 360 * 60) tm -= 360 * 60;
   return tm / 60;
+}
+
+// ── 床面積：構造から「測る線」を決める ──
+// 木造は壁の厚さ・形状にかかわらず柱の中心線。鉄骨造は被覆の状態で3通りに分かれ、
+// 鉄筋コンクリート造等の壁構造は壁の中心線による。区分建物の専有部分だけが内側線（内法）。
+// 寸法はすべてcm単位（小数第2位）で与える。長さが2桁小数なら面積は4桁小数に収まり、
+// 解説に印字した数値をそのまま追っても答えが再現できる（丸め由来の食い違いが出ない）。
+function floorLineCases(U, cx, cy, col, wall) {
+  const m = (v) => v.toFixed(2);
+  return [
+    {
+      kouzou: "木造",
+      yane: U.pick(["かわらぶき", "スレートぶき", "亜鉛メッキ鋼板ぶき"]),
+      given: `柱の中心間の距離は <b>${m(cx)}m × ${m(cy)}m</b>、柱の見付きは <b>${m(col)}m</b>、外壁の厚さは <b>${m(wall)}m</b> である。`,
+      w: cx,
+      d: cy,
+      line: "柱の中心線",
+      why: `木造は<b>壁の厚さ又は形状にかかわらず柱の中心線</b>による。柱の中心間の距離がそのまま辺長になり、外壁の厚さ ${m(wall)}m は<b>使わない</b>（この数値が引っかけ）。`,
+    },
+    {
+      kouzou: "鉄骨造",
+      yane: "亜鉛メッキ鋼板ぶき",
+      given: `柱の中心間の距離は <b>${m(cx)}m × ${m(cy)}m</b>、柱の見付きは <b>${m(col)}m</b> である。柱は<b>外側のみが被覆</b>されており、内側は露出している。`,
+      w: U.r2(cx + col),
+      d: U.r2(cy + col),
+      line: "柱の外面を結ぶ線",
+      why: `外側だけ被覆されている鉄骨造は<b>柱の外面を結ぶ線</b>による。柱の中心から外面までは見付きの半分 ${m(col / 2)}m なので、両側で ${m(col)}m 広がる。`,
+    },
+    {
+      kouzou: "鉄骨造",
+      yane: "陸屋根",
+      given: `柱の中心間の距離は <b>${m(cx)}m × ${m(cy)}m</b>、柱の見付きは <b>${m(col)}m</b> である。柱は<b>両側が被覆</b>されている。`,
+      w: cx,
+      d: cy,
+      line: "柱の中心線",
+      why: `両側が被覆された鉄骨造は<b>柱の中心線</b>による（木造と同じ扱いになる）。柱の中心間の距離がそのまま辺長で、見付き ${m(col)}m は<b>使わない</b>。`,
+    },
+    {
+      kouzou: "鉄骨造",
+      yane: "陸屋根",
+      given: `柱の中心間の距離は <b>${m(cx)}m × ${m(cy)}m</b>、柱の見付きは <b>${m(col)}m</b>。<b>柱の外側に厚さ ${m(wall)}m の壁</b>があり、壁の内面は柱の外面と接している。`,
+      w: U.r2(cx + col + wall),
+      d: U.r2(cy + col + wall),
+      line: "壁の中心線",
+      why: `柱の外側に壁があるときは<b>壁の中心線</b>による。柱の中心→柱の外面が ${m(col / 2)}m、そこから壁の中心まで ${m(wall / 2)}m。合わせて片側 ${m((col + wall) / 2)}m、両側で ${m(col + wall)}m 広がる。`,
+    },
+    {
+      kouzou: "鉄筋コンクリート造",
+      yane: "陸屋根",
+      given: `この建物は<b>壁構造</b>である。壁の内のり寸法は <b>${m(cx)}m × ${m(cy)}m</b>、壁の厚さは一様に <b>${m(wall)}m</b> である。`,
+      w: U.r2(cx + wall),
+      d: U.r2(cy + wall),
+      line: "壁の中心線",
+      why: `鉄筋コンクリート造等の<b>壁構造は壁の中心線</b>による。内のりから壁の中心までは片側 ${m(wall / 2)}m なので、両側で ${m(wall)}m 広がる。`,
+    },
+  ];
+}
+
+// 床面積に算入しない付属物（準則82条・先例）。求積には影響しないが、
+// 与件に混ぜて「引いてはいけないものを引く／足してはいけないものを足す」誤りを誘う。
+const FLOOR_FUSANNYU = [
+  {
+    text: (U) =>
+      `1階には、屋根及び手すりが設置された<b>屋外の階段</b>（${(U.ri(90, 140) / 100).toFixed(2)}m × ${(U.ri(240, 360) / 100).toFixed(2)}m）が接続している。`,
+    why: "建物に附属する<b>屋外の階段</b>は、屋根及び手すりが設置されていても床面積に<b>算入しない</b>。",
+  },
+  {
+    text: (U) =>
+      `2階の外壁には、下部が床面と同一の高さにない<b>出窓</b>（${(U.ri(160, 240) / 100).toFixed(2)}m × ${(U.ri(40, 60) / 100).toFixed(2)}m）がある。`,
+    why: "<b>出窓</b>は、その下部が床面と同一の高さにないものは床面積に<b>算入しない</b>。",
+  },
+  {
+    text: (U) =>
+      `2階には、外側に<b>開放されたベランダ</b>（${(U.ri(150, 220) / 100).toFixed(2)}m × ${(U.ri(300, 450) / 100).toFixed(2)}m）が付属している。`,
+    why: "外側に<b>開放されたベランダ</b>は床面積に<b>算入しない</b>。",
+  },
+];
+
+// 一般の建物（木造・鉄骨造・RC壁構造）の2階建て。各階ごとに切り捨てて合計する。
+function floorIppanProblem(U) {
+  const cx = U.ri(800, 1400) / 100; // 柱の中心間または内のり（間口）
+  const cy = U.ri(600, 1100) / 100; // 同（奥行）
+  const col = U.pick([0.2, 0.25, 0.3, 0.4]); // 柱の見付き
+  const wall = U.pick([0.12, 0.15, 0.18, 0.2]); // 壁の厚さ
+  const c = U.pick(floorLineCases(U, cx, cy, col, wall));
+
+  // 2階には吹抜けがあり、その分だけ2階の床面積が小さくなる
+  const vw = U.ri(160, 300) / 100;
+  const vd = U.ri(160, 300) / 100;
+  const voidArea = U.r4(vw * vd);
+
+  const fu = U.pick(FLOOR_FUSANNYU);
+  const base = U.r4(c.w * c.d);
+  const raw2 = U.r4(base - voidArea);
+  const a1 = U.floor2(base);
+  const a2 = U.floor2(raw2);
+  const total = U.r2(a1 + a2);
+
+  return {
+    html: `<p><b>${c.kouzou}${c.yane}2階建て</b>の建物について、次の与件から各階の床面積及びその合計を求めよ。</p>
+<p>${c.given}1階・2階の外周は同一で、各階とも<b>階段室</b>を含む。</p>
+<p>2階の内部に <b>${vw.toFixed(2)}m × ${vd.toFixed(2)}m の吹抜け</b>がある。${fu.text(U)}</p>`,
+    fields: [
+      { label: "1階の床面積（㎡）", kind: "num", answer: a1, tol: 0.001 },
+      { label: "2階の床面積（㎡）", kind: "num", answer: a2, tol: 0.001 },
+      { label: "床面積の合計（㎡）", kind: "num", answer: total, tol: 0.001 },
+    ],
+    solution: `<p><b>① どの線で測るか ⟹ ${c.line}</b></p>
+<p>${c.why}</p>
+<p>辺長 <b>${c.w.toFixed(2)}m × ${c.d.toFixed(2)}m</b>　＝　${base.toFixed(4)}㎡</p>
+<hr class="sep">
+<p><b>② 算入・不算入</b></p>
+<p>・<b>吹抜け</b>は上階の床面積に<b>算入しない</b> ⟹ 2階から ${vw.toFixed(2)}×${vd.toFixed(2)}＝<b>${voidArea.toFixed(4)}㎡</b> を控除<br>
+・${fu.why} ⟹ <b>加算しない</b><br>
+・<b>階段室は各階の床面積に算入する</b> ⟹ 外周の内側にあるのでそのまま</p>
+<hr class="sep">
+<p><b>③ 各階ごとに1/100㎡未満を切り捨てる（規則115条）</b></p>
+<p>1階　${base.toFixed(4)}㎡ ⟹ <b>${a1.toFixed(2)}㎡</b><br>
+2階　${base.toFixed(4)}－${voidArea.toFixed(4)}＝${raw2.toFixed(4)}㎡ ⟹ <b>${a2.toFixed(2)}㎡</b></p>
+<hr class="sep">
+<p><b>④ 合計</b>　${a1.toFixed(2)}＋${a2.toFixed(2)}＝<b>${total.toFixed(2)}㎡</b></p>
+<p class="muted small">登記記録は<b>各階ごとに</b>床面積を記録する。だから端数処理も<b>階ごと</b>に行い、その後で合計する。先に合計してから切り捨てると答えが変わることがある。</p>
+<p class="muted small"><b>構造別のまとめ</b>：木造＝柱の中心線／鉄骨造は<b>外側被覆＝柱の外面を結ぶ線・両側被覆＝柱の中心線・柱の外側に壁＝壁の中心線</b>／鉄筋コンクリート造等の壁構造＝壁の中心線。区分建物の専有部分だけが<b>内側線（内法）</b>。</p>`,
+  };
+}
+
+// 区分建物。規則115条の本文（区画の中心線）とかっこ書（専有部分は内側線）を1問で対比させる。
+function floorKubunProblem(U) {
+  const w = U.ri(1400, 2200) / 100; // 一棟の建物の壁芯（間口）
+  const d = U.ri(800, 1300) / 100; // 同（奥行）
+  const t = U.pick([0.15, 0.18, 0.2, 0.25]); // 壁の厚さ
+  const uw = U.r2(w / 2 - U.ri(30, 90) / 100); // 専有部分の壁芯（間口）
+  const ud = U.r2(d - U.ri(50, 150) / 100); // 同（奥行）
+  const iw = U.r2(uw - t);
+  const id2 = U.r2(ud - t);
+
+  const ittou = U.r4(w * d);
+  const senyu = U.r4(iw * id2);
+  const a1 = U.floor2(ittou);
+  const a2 = U.floor2(senyu);
+
+  return {
+    html: `<p>鉄筋コンクリート造陸屋根3階建ての<b>一棟の建物</b>がある。その1階部分は、壁その他の区画の<b>中心線</b>で囲むと <b>${w.toFixed(2)}m × ${d.toFixed(2)}m</b> の長方形である。</p>
+<p>この1階には区分建物である <b>101号室</b> があり、その周囲の壁の<b>中心線</b>で囲まれた部分は <b>${uw.toFixed(2)}m × ${ud.toFixed(2)}m</b>、壁の厚さは一様に <b>${t.toFixed(2)}m</b> である。</p>
+<p>次の2つの床面積を求めよ。</p>`,
+    fields: [
+      {
+        label: "一棟の建物の1階の床面積（㎡）",
+        kind: "num",
+        answer: a1,
+        tol: 0.001,
+      },
+      { label: "101号室の床面積（㎡）", kind: "num", answer: a2, tol: 0.001 },
+    ],
+    solution: `<p><b>① どの線で測るか</b></p>
+<p>・<b>一棟の建物</b>＝原則どおり<b>区画の中心線</b>（壁芯）<br>
+・<b>専有部分</b>＝<b>区画の内側線</b>（内法。規則115条かっこ書）</p>
+<hr class="sep">
+<p><b>② 一棟の建物の1階</b></p>
+<p>${w.toFixed(2)}×${d.toFixed(2)}＝${ittou.toFixed(4)}㎡ ⟹ 1/100㎡未満切捨て ⟹ <b>${a1.toFixed(2)}㎡</b></p>
+<hr class="sep">
+<p><b>③ 101号室（専有部分）</b></p>
+<p>壁芯から内側へ片側 ${(t / 2).toFixed(3)}m ずつ、両側で ${t.toFixed(2)}m 小さくなる。</p>
+<p>内法寸法　${uw.toFixed(2)}－${t.toFixed(2)}＝<b>${iw.toFixed(2)}m</b>　／　${ud.toFixed(2)}－${t.toFixed(2)}＝<b>${id2.toFixed(2)}m</b></p>
+<p>${iw.toFixed(2)}×${id2.toFixed(2)}＝${senyu.toFixed(4)}㎡ ⟹ 1/100㎡未満切捨て ⟹ <b>${a2.toFixed(2)}㎡</b></p>
+<p class="muted small">同じ建物でも<b>一棟は壁芯・専有部分は内法</b>で、専有部分は壁の厚みのぶん小さく出る。共用部分の持分は、規約に別段の定めがない限りこの<b>専有部分の床面積の割合</b>による。</p>`,
+  };
 }
 
 const CalcGen = {
@@ -430,131 +602,19 @@ const CalcGen = {
   },
 
   // ⑤ 床面積（座標系の影響なし＝建物寸法）
+  // 建物の床面積を1問に統合する。本試験の記述式と同じ順で
+  //   ① 構造から「どの線で測るか」を決める
+  //   ② 算入・不算入を判断する
+  //   ③ 各階ごとに規則115条で切り捨てる
+  //   ④ 合計する
+  // を通しで問う。どこか1つを外すと以降が全部ずれる構造にしてある。
   floor: {
-    name: "床面積の計算（建物・区分建物）",
-    desc: "壁芯／内法・吹抜け・規則115条の切捨て処理",
+    name: "床面積の計算（構造判断→算入不算入→端数処理）",
+    desc: "測る線を構造から決め、吹抜け等を除き、各階ごとに規則115条で切り捨てて合計する",
     group: "求積・面積",
     gen() {
       const U = CalcUtil;
-      const kubun = Math.random() < 0.4;
-      if (kubun) {
-        const w = U.ri(5000, 12000) / 1000,
-          d = U.ri(4000, 9000) / 1000;
-        const t = [0.15, 0.2, 0.25][U.ri(0, 2)];
-        const iw = w - t,
-          id_ = d - t;
-        const ans = U.floor2(iw * id_);
-        return {
-          html: `<p>区分建物の専有部分は、壁芯寸法で <b>${w.toFixed(3)}m × ${d.toFixed(3)}m</b> の長方形である。周囲の壁厚は一様に <b>${t.toFixed(2)}m</b>（壁芯から内側へ各${(t / 2).toFixed(3)}m）。専有部分の床面積を求めよ。</p>`,
-          fields: [
-            {
-              label: "床面積（㎡・小数第2位）",
-              kind: "num",
-              answer: ans,
-              tol: 0.001,
-            },
-          ],
-          solution: `<p>専有部分は<b>内法計算</b>（規則115条かっこ書）。</p>
-<p>内法寸法: ${iw.toFixed(3)}×${id_.toFixed(3)}＝${(iw * id_).toFixed(4)}㎡</p>
-<p>1/100㎡未満<b>切捨て</b> ⟹ <b>${ans.toFixed(2)}㎡</b></p>`,
-        };
-      }
-      const a = U.ri(7000, 12000) / 1000,
-        b = U.ri(5000, 9000) / 1000;
-      const hasVoid = Math.random() < 0.6;
-      const vw = U.ri(1500, 3000) / 1000,
-        vd = U.ri(1500, 3000) / 1000;
-      const raw = hasVoid ? a * b - vw * vd : a * b;
-      const ans = U.floor2(raw);
-      return {
-        html: `<p>木造2階建ての2階部分は、壁芯寸法で <b>${a.toFixed(3)}m × ${b.toFixed(3)}m</b> の長方形である。${hasVoid ? `内部に <b>${vw.toFixed(3)}m × ${vd.toFixed(3)}m の吹抜け</b>がある。` : "外側に開放されたベランダ（2.000m×3.000m）が付属する。"}2階の床面積を求めよ。</p>`,
-        fields: [
-          {
-            label: "2階床面積（㎡・小数第2位）",
-            kind: "num",
-            answer: ans,
-            tol: 0.001,
-          },
-        ],
-        solution: `<p>${a.toFixed(3)}×${b.toFixed(3)}＝${(a * b).toFixed(4)}㎡${hasVoid ? `<br>吹抜け ${(vw * vd).toFixed(4)}㎡ は<b>算入しない</b>（準則82条）` : "<br>開放されたベランダは<b>算入しない</b>（準則82条）"}</p>
-<p>${raw.toFixed(4)}㎡ ⟹ 1/100㎡未満切捨て（規則115条）⟹ <b>${ans.toFixed(2)}㎡</b></p>`,
-      };
-    },
-  },
-  // 構造別に「どの線で測るか」を判断させる。測り方を誤ると求積そのものが崩れる。
-  floorLine: {
-    name: "床面積の区画線（構造別に測る線を判断）",
-    desc: "木造＝柱の中心線／鉄骨造は被覆で3通り／RC壁構造＝壁の中心線",
-    group: "求積・面積",
-    gen() {
-      const U = CalcUtil;
-      // 柱の中心間の距離を基準にし、被覆・壁の厚さを与える
-      const cx = U.ri(8000, 14000) / 1000; // 柱の中心間（間口）
-      const cy = U.ri(6000, 11000) / 1000; // 柱の中心間（奥行）
-      const col = U.pick([0.2, 0.25, 0.3, 0.4]); // 柱の見付き
-      const wall = U.pick([0.12, 0.15, 0.18, 0.2]); // 壁の厚さ
-
-      const cases = [
-        {
-          key: "木造",
-          text: `<b>木造</b>2階建ての1階部分。柱の中心間の距離は <b>${cx.toFixed(3)}m × ${cy.toFixed(3)}m</b>。柱の見付きは <b>${col.toFixed(2)}m</b>、外壁の厚さは <b>${wall.toFixed(2)}m</b> である。`,
-          w: cx,
-          d: cy,
-          line: "柱の中心線",
-          why: `木造は<b>壁の厚さ又は形状にかかわらず柱の中心線</b>による。柱の中心間の距離がそのまま辺長になる。壁の厚さ ${wall.toFixed(2)}m は<b>使わない</b>。`,
-        },
-        {
-          key: "鉄骨造・外側被覆",
-          text: `<b>鉄骨造</b>3階建ての2階部分。柱の中心間の距離は <b>${cx.toFixed(3)}m × ${cy.toFixed(3)}m</b>、柱の見付きは <b>${col.toFixed(2)}m</b>。柱は<b>外側のみが被覆</b>されており、内側は露出している。`,
-          w: cx + col,
-          d: cy + col,
-          line: "柱の外面を結ぶ線",
-          why: `外側だけ被覆されている鉄骨造は<b>柱の外面を結ぶ線</b>による。柱の中心から外面までは見付きの半分 ${(col / 2).toFixed(3)}m なので、両側で ${col.toFixed(2)}m 広がる。`,
-        },
-        {
-          key: "鉄骨造・両側被覆",
-          text: `<b>鉄骨造</b>3階建ての2階部分。柱の中心間の距離は <b>${cx.toFixed(3)}m × ${cy.toFixed(3)}m</b>、柱の見付きは <b>${col.toFixed(2)}m</b>。柱は<b>両側が被覆</b>されている。`,
-          w: cx,
-          d: cy,
-          line: "柱の中心線",
-          why: `両側が被覆された鉄骨造は<b>柱の中心線</b>による（木造と同じ扱い）。柱の中心間の距離がそのまま辺長になる。`,
-        },
-        {
-          key: "鉄骨造・柱の外側に壁",
-          text: `<b>鉄骨造</b>3階建ての2階部分。柱の中心間の距離は <b>${cx.toFixed(3)}m × ${cy.toFixed(3)}m</b>、柱の見付きは <b>${col.toFixed(2)}m</b>。<b>柱の外側に厚さ ${wall.toFixed(2)}m の壁</b>があり、壁の内面は柱の外面と接している。`,
-          w: cx + col + wall,
-          d: cy + col + wall,
-          line: "壁の中心線",
-          why: `柱の外側に壁があるときは<b>壁の中心線</b>による。柱の中心→柱の外面が ${(col / 2).toFixed(3)}m、そこから壁の中心まで ${(wall / 2).toFixed(3)}m。両側で ${(col + wall).toFixed(2)}m 広がる。`,
-        },
-        {
-          key: "鉄筋コンクリート造（壁構造）",
-          text: `<b>鉄筋コンクリート造</b>3階建ての2階部分は<b>壁構造</b>である。壁の内のり寸法は <b>${cx.toFixed(3)}m × ${cy.toFixed(3)}m</b>、壁の厚さは一様に <b>${wall.toFixed(2)}m</b> である。`,
-          w: cx + wall,
-          d: cy + wall,
-          line: "壁の中心線",
-          why: `壁構造は<b>壁の中心線</b>による。内のりから壁の中心までは片側 ${(wall / 2).toFixed(3)}m なので、両側で ${wall.toFixed(2)}m 広がる。`,
-        },
-      ];
-      const c = U.pick(cases);
-      const area = c.w * c.d;
-      const ans = U.floor2(area);
-      return {
-        html: `<p>${c.text}</p><p>この階の<b>床面積</b>を求めよ（規則115条による）。</p>`,
-        fields: [
-          {
-            label: "床面積（㎡・小数第2位）",
-            kind: "num",
-            answer: ans,
-            tol: 0.001,
-          },
-        ],
-        solution: `<p><b>測る線: ${c.line}</b></p>
-<p>${c.why}</p>
-<p>辺長 ${c.w.toFixed(3)}m × ${c.d.toFixed(3)}m ＝ ${area.toFixed(4)}㎡</p>
-<p>1/100㎡未満<b>切捨て</b>（規則115条）⟹ <b>${ans.toFixed(2)}㎡</b></p>
-<p class="muted small"><b>構造別のまとめ</b>: 木造＝柱の中心線／鉄骨造は<b>外側被覆＝柱の外面を結ぶ線・両側被覆＝柱の中心線・柱の外側に壁＝壁の中心線</b>／鉄筋コンクリート造等の壁構造＝壁の中心線。区分建物の専有部分だけは<b>内側線（内法）</b>。</p>`,
-      };
+      return Math.random() < 0.35 ? floorKubunProblem(U) : floorIppanProblem(U);
     },
   },
 
@@ -1216,14 +1276,8 @@ const CALC_FREQ = {
   floor: {
     rank: "high",
     vol: 63,
-    weight: 9,
-    note: "記述式の建物は毎回床面積の認定・計算がある",
-  },
-  floorLine: {
-    rank: "high",
-    vol: 63,
-    weight: 7,
-    note: "構造の表示から測る線を判断させる。誤ると求積全体が崩れる",
+    weight: 10,
+    note: "記述式の建物は毎回床面積の認定・計算がある。構造から測る線を誤ると求積全体が崩れる",
   },
   parallel: {
     rank: "high",
@@ -1373,6 +1427,6 @@ const CALC_GROUPS = [
       "traverseAdjust",
     ],
   },
-  { label: "求積・面積", types: ["area", "floor", "floorLine"] },
+  { label: "求積・面積", types: ["area", "floor"] },
 ];
 const CALC_TYPES = CALC_GROUPS.flatMap((g) => g.types);

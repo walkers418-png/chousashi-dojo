@@ -619,6 +619,20 @@ function levelBadge(level) {
   return "";
 }
 
+// 分野内の並び順。書き直しは既存IDの位置で行うため配列順は執筆順のままになる。
+// 読む順は「必修 → 発展 → 未整理」が正しいので、表示側で並べ替える。
+const LEVEL_ORDER = { 必修: 0, 発展: 1 };
+function lecturesOfCat(cat) {
+  return LECTURES.filter((l) => l.cat === cat)
+    .map((l, i) => ({ l, i }))
+    .sort(
+      (a, b) =>
+        (LEVEL_ORDER[a.l.level] ?? 2) - (LEVEL_ORDER[b.l.level] ?? 2) ||
+        a.i - b.i,
+    )
+    .map((x) => x.l);
+}
+
 function renderLectureList() {
   const cats = [...new Set(LECTURES.map((l) => l.cat))];
   const browseHtml =
@@ -628,7 +642,7 @@ function renderLectureList() {
     </div>` +
     cats
       .map((cat) =>
-        LECTURES.filter((l) => l.cat === cat)
+        lecturesOfCat(cat)
           .map(
             (l) =>
               `<div class="card clickable" data-lec="${l.id}" style="padding:13px 14px">
