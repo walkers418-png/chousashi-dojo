@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="調査士道場">
+<meta name="theme-color" content="#101418">
+<title>調査士道場 — 土地家屋調査士 合格アプリ</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="stylesheet" href="css/style.css?v=110">
+</head>
+<body>
+<header id="appHeader">
+  <h1>調査士道場</h1>
+  <span id="streakBadge" class="streak">🔥 0日</span>
+</header>
+
+<main id="view"></main>
+
+<nav id="tabBar">
+  <button data-tab="today" class="active"><span class="ico">📅</span>今日</button>
+  <button data-tab="lecture"><span class="ico">📖</span>講義</button>
+  <button data-tab="quiz"><span class="ico">✅</span>択一</button>
+  <button data-tab="calc"><span class="ico">🧮</span>計算</button>
+  <button data-tab="written"><span class="ico">📐</span>記述</button>
+  <button data-tab="progress"><span class="ico">📊</span>進捗</button>
+</nav>
+
+<!-- math.js はデータファイル内で数式を組み立てるので、データより先に読み込む -->
+<script src="js/math.js?v=110"></script>
+<script src="js/data/schedule.js?v=110"></script>
+<script src="js/data/lectures.js?v=110"></script>
+<script src="js/data/questions.js?v=110"></script>
+<script src="js/data/flash.js?v=110"></script>
+<script src="js/data/written-gen.js?v=110"></script>
+<script src="js/data/written.js?v=110"></script>
+<script src="js/data/calc-guide.js?v=110"></script>
+<script src="js/data/calc-anim.js?v=110"></script>
+<script src="js/data/importance.js?v=110"></script>
+<script src="js/data/articles.js?v=110"></script>
+<script src="js/data/patterns.js?v=110"></script>
+<script src="js/data/appforms.js?v=110"></script>
+<script src="js/data/topics.js?v=110"></script>
+<script src="js/data/topic-map.js?v=110"></script>
+<script src="js/store.js?v=110"></script>
+<script src="js/calc.js?v=110"></script>
+<script src="js/app.js?v=110"></script>
+<script>
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
+</script>
+</body>
+</html>

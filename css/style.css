@@ -1,0 +1,2220 @@
+/* 調査士道場 — mobile-first dark UI */
+:root {
+  --bg: #101418;
+  --surface: #1a2026;
+  --surface2: #232b33;
+  --border: #2e3942;
+  --text: #e8edf2;
+  --muted: #8fa0ae;
+  --accent: #4fc3f7;
+  --accent-deep: #0288d1;
+  --ok: #66bb6a;
+  --ng: #ef5350;
+  --warn: #ffb74d;
+  --radius: 14px;
+  /* 条文の強調（蛍光ペンの帯）とメモの色。ライトテーマで上書きする */
+  --hl-band: rgba(255, 183, 77, 0.42);
+  --key-bg: rgba(79, 195, 247, 0.1);
+  --key-bar: #4fc3f7;
+  --warn-bg: rgba(255, 183, 77, 0.12);
+  --ex-bg: rgba(102, 187, 106, 0.1);
+  --ex-bar: #66bb6a;
+}
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+html {
+  height: 100%;
+}
+body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+  overflow-x: hidden; /* はみ出し防止（保険） */
+  -webkit-text-size-adjust: 100%; /* iOSの自動文字拡大による崩れを防ぐ */
+}
+/* 長い語・数値・数式がはみ出さないよう折り返す（保険） */
+#view,
+.statement,
+.lecture-body,
+.expl,
+.art-pop-text,
+.stmt,
+.stmt span,
+.choice,
+.modetog,
+.reco,
+.se-prompt,
+td,
+th,
+.qhead,
+.ob-list li {
+  overflow-wrap: break-word;
+  word-break: break-word;
+  min-width: 0;
+}
+canvas.fig {
+  max-width: 100%;
+  height: auto;
+}
+/* 講義内のSVG図解 */
+.lecfig {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  margin: 12px auto;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.formula {
+  overflow-x: auto;
+} /* 長い数式は溢れたら内部スクロール */
+#appHeader {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  background: rgba(16, 20, 24, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+#appHeader h1 {
+  font-size: 17px;
+  letter-spacing: 0.08em;
+}
+.streak {
+  font-size: 13px;
+  color: var(--warn);
+  font-weight: 700;
+}
+
+main {
+  padding: 14px 14px calc(88px + env(safe-area-inset-bottom));
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+#tabBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  background: rgba(16, 20, 24, 0.96);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+#tabBar button {
+  flex: 1;
+  padding: 8px 0 6px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 10px;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+#tabBar button .ico {
+  font-size: 19px;
+}
+#tabBar button.active {
+  color: var(--accent);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.card h2 {
+  font-size: 16px;
+  margin-bottom: 8px;
+  color: var(--accent);
+}
+.card h3 {
+  font-size: 14.5px;
+  margin: 12px 0 6px;
+}
+.card.clickable:active {
+  background: var(--surface2);
+}
+.kicker {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+.small {
+  font-size: 12.5px;
+}
+
+.btn {
+  display: inline-block;
+  width: 100%;
+  text-align: center;
+  background: var(--accent-deep);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 13px 16px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  margin-top: 10px;
+}
+.btn.secondary {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn.ghost {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+.btn:disabled {
+  opacity: 0.4;
+}
+.btn-row {
+  display: flex;
+  gap: 8px;
+}
+.btn-row .btn {
+  margin-top: 10px;
+}
+
+/* SRS（間隔反復）の自己評価ボタン */
+.grade-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.grade-row .btn {
+  margin-top: 0;
+  flex: 1;
+  padding: 11px 4px;
+  font-size: 14px;
+  line-height: 1.25;
+}
+.grade-row .btn small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 400;
+  opacity: 0.85;
+}
+.grade-hard {
+  background: var(--surface2);
+  color: var(--ng);
+  border: 1px solid var(--ng);
+}
+.grade-good {
+  background: var(--surface2);
+  color: var(--accent);
+  border: 1px solid var(--accent-deep);
+}
+.grade-easy {
+  background: var(--surface2);
+  color: var(--ok);
+  border: 1px solid var(--ok);
+}
+.srs-next {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 10px;
+}
+
+.choice {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-top: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.6;
+  cursor: pointer;
+}
+.choice .cnum {
+  color: var(--accent);
+  font-weight: 700;
+  margin-right: 6px;
+}
+.choice.correct {
+  border-color: var(--ok);
+  background: rgba(102, 187, 106, 0.12);
+}
+.choice.wrong {
+  border-color: var(--ng);
+  background: rgba(239, 83, 80, 0.12);
+}
+.choice:disabled {
+  cursor: default;
+}
+
+/* 組み合わせ問題のア〜オ記述 */
+.stmts {
+  margin: 4px 0 10px;
+}
+.stmt {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 9px 11px;
+  margin-top: 7px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 13.5px;
+  line-height: 1.65;
+}
+.stmt-mark {
+  flex: none;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 12.5px;
+}
+
+/* 学習法モードのトグル */
+.modetog {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 4px;
+  cursor: pointer;
+  border-top: 1px solid var(--border);
+}
+.modetog:first-of-type {
+  border-top: none;
+}
+.modetog input {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  accent-color: var(--accent-deep);
+  flex: none;
+}
+
+/* 自信度の申告 */
+.conf-ask {
+  font-size: 13.5px;
+  margin: 10px 0 4px;
+}
+.conf-row {
+  display: flex;
+  gap: 8px;
+}
+.conf-row .btn {
+  margin-top: 6px;
+  flex: 1;
+}
+.conf-yes {
+  background: var(--surface2);
+  color: var(--ok);
+  border: 1px solid var(--ok);
+}
+.conf-no {
+  background: var(--surface2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+/* 自己説明の一拍 */
+.se-prompt {
+  margin: 12px 0 4px;
+  padding: 11px 13px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  background: rgba(79, 195, 247, 0.08);
+  border: 1px dashed var(--accent-deep);
+  border-radius: 10px;
+}
+
+/* 間違いノートのメモ・バックアップのテキスト欄 */
+.memo {
+  width: 100%;
+  margin-top: 8px;
+  padding: 9px 11px;
+  box-sizing: border-box;
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 48px;
+}
+.memo:focus {
+  outline: none;
+  border-color: var(--accent-deep);
+}
+details summary {
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+/* 今日のおすすめ（動的アクション） */
+.reco {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 4px;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+}
+.reco:first-of-type {
+  border-top: none;
+  margin-top: 6px;
+}
+.reco-ico {
+  font-size: 20px;
+  flex: none;
+}
+.reco-go {
+  color: var(--muted);
+  font-size: 13px;
+}
+.reco:active {
+  background: var(--surface2);
+  border-radius: 8px;
+}
+
+/* 読み上げボタン */
+.spk {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 2px;
+  line-height: 1;
+}
+.spk:active {
+  opacity: 0.5;
+}
+
+/* 音声プレイヤーバー（下タブの上に浮かぶ） */
+#playerBar {
+  position: fixed;
+  left: 8px;
+  right: 8px;
+  bottom: 62px;
+  z-index: 45;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--accent-deep);
+  border-radius: 12px;
+  padding: 6px 8px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
+}
+#playerBar button {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  min-width: 34px;
+  height: 34px;
+  font-size: 15px;
+  cursor: pointer;
+  flex: none;
+  padding: 0;
+}
+#playerBar button:disabled {
+  opacity: 0.35;
+}
+#plLabel {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+#plRate {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* スワイプによるタブ切替のスライド演出 */
+@keyframes slideInL {
+  from {
+    transform: translateX(26px);
+    opacity: 0.4;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes slideInR {
+  from {
+    transform: translateX(-26px);
+    opacity: 0.4;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+#view.slide-l {
+  animation: slideInL 0.18s ease;
+}
+#view.slide-r {
+  animation: slideInR 0.18s ease;
+}
+
+/* 初回ガイド（オンボーディング） */
+#obOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 20px;
+}
+.ob-card {
+  background: var(--surface);
+  border: 1px solid var(--accent-deep);
+  border-radius: 14px;
+  max-width: 480px;
+  width: 100%;
+  padding: 18px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.ob-card h2 {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+.ob-list {
+  list-style: none;
+  margin: 0 0 4px;
+}
+.ob-list li {
+  padding: 9px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13.5px;
+  line-height: 1.65;
+}
+.ob-list li:first-child {
+  border-top: none;
+}
+
+.expl {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--surface2);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 10px 10px 0;
+  font-size: 13.5px;
+}
+.expl b {
+  color: var(--accent);
+}
+
+.tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 99px;
+  background: var(--surface2);
+  color: var(--accent);
+  border: 1px solid var(--border);
+  margin-right: 6px;
+  margin-bottom: 6px;
+}
+.tag.ok {
+  color: var(--ok);
+}
+.tag.ng {
+  color: var(--ng);
+}
+.tag.warn {
+  color: var(--warn);
+}
+
+.progressbar {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--surface2);
+  overflow: hidden;
+  margin: 8px 0;
+}
+.progressbar > div {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-deep), var(--accent));
+  border-radius: 99px;
+  transition: width 0.3s;
+}
+
+input[type="text"],
+input[type="number"],
+select {
+  width: 100%;
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 12px;
+  font-size: 16px;
+  font-family: inherit;
+  margin-top: 6px;
+}
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+label.fld {
+  display: block;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.fld-ok {
+  border-color: var(--ok) !important;
+}
+.fld-ng {
+  border-color: var(--ng) !important;
+}
+
+table.simple {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin: 8px 0;
+}
+table.simple th,
+table.simple td {
+  border: 1px solid var(--border);
+  padding: 6px 8px;
+  text-align: left;
+}
+table.simple th {
+  background: var(--surface2);
+  color: var(--muted);
+  font-weight: 600;
+}
+table.simple td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 列数の多い表（計算道場の成績など）はスマホ幅で潰れるので内部で横スクロールさせる。
+   数値と短い見出しは折り返さず、種目名の列だけが伸縮するようにする。 */
+/* 数式（MathML）。本文より一回り大きくしないと分数の分子分母が潰れて読めない。
+   <math> 自体に display を当てるとMathMLのレイアウトが壊れて1文字ずつ折り返すため、
+   位置と横スクロールは外側の .math-block で制御する。 */
+math.mx {
+  font-size: 1.3em;
+}
+.math-block {
+  margin: 10px 0;
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+.formula .math-block {
+  margin: 8px 0;
+}
+/* 公式ブロック内の小見出し。式と地の文が同じ行で折り返すのを防ぐ */
+.fm-head {
+  margin: 14px 0 2px;
+  line-height: 1.6;
+}
+.fm-head:first-child {
+  margin-top: 0;
+}
+
+/* 申請書様式（白紙再現）。本番の答案用紙に近い見た目にして、欄の位置を体で覚える。 */
+.af-sheet {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 12px;
+  margin: 4px 0 2px;
+}
+.af-title {
+  text-align: center;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.4em;
+  margin: 2px 0 14px;
+}
+.af-field {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.af-label {
+  flex: 0 0 auto;
+  font-size: 13px;
+  letter-spacing: 0.2em;
+}
+.af-blank {
+  flex: 1;
+  border-bottom: 1px solid var(--border);
+  height: 22px;
+}
+.af-note {
+  font-size: 13px;
+  margin: 12px 0;
+  line-height: 1.9;
+}
+.af-table-title {
+  font-size: 13px;
+  margin: 16px 0 4px;
+}
+/* 左端の縦書きラベル（「土地の表示」など）。本番の様式と同じ配置にする。 */
+.af-table-wrap {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+  margin: 8px 0 14px;
+}
+.af-side {
+  flex: 0 0 auto;
+  writing-mode: vertical-rl;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 2px;
+  background: var(--surface);
+}
+.af-table-wrap .table-scroll {
+  flex: 1;
+  min-width: 0;
+}
+table.af-table {
+  font-size: 11.5px;
+  margin: 0;
+}
+table.af-table th {
+  text-align: center;
+  font-weight: 600;
+  line-height: 1.4;
+}
+table.af-table td {
+  height: 26px;
+}
+table.af-table th.af-pre {
+  text-align: center;
+  white-space: nowrap;
+}
+.af-points {
+  margin: 4px 0 0 18px;
+  font-size: 13.5px;
+  line-height: 1.9;
+}
+.af-points li {
+  margin-bottom: 10px;
+}
+
+/* 講義のレベル（必修／発展） */
+.lv-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.lv-core {
+  background: rgba(239, 83, 80, 0.14);
+  color: #ef9a9a;
+  border: 1px solid rgba(239, 83, 80, 0.4);
+}
+.lv-adv {
+  background: rgba(158, 158, 158, 0.14);
+  color: #b0bec5;
+  border: 1px solid rgba(158, 158, 158, 0.35);
+}
+
+/* 出題頻度バッジ（根拠は答練63冊の実測。本試験の統計ではない旨は本文で明記） */
+.freq-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.freq-high {
+  background: rgba(76, 175, 80, 0.16);
+  color: #66bb6a;
+  border: 1px solid rgba(76, 175, 80, 0.4);
+}
+.freq-base {
+  background: rgba(79, 195, 247, 0.16);
+  color: var(--accent);
+  border: 1px solid rgba(79, 195, 247, 0.4);
+}
+.freq-mid {
+  background: rgba(255, 183, 77, 0.14);
+  color: #ffb74d;
+  border: 1px solid rgba(255, 183, 77, 0.35);
+}
+.freq-low {
+  background: rgba(158, 158, 158, 0.14);
+  color: #9e9e9e;
+  border: 1px solid rgba(158, 158, 158, 0.35);
+}
+.freq-none {
+  background: rgba(239, 83, 80, 0.12);
+  color: #ef9a9a;
+  border: 1px solid rgba(239, 83, 80, 0.35);
+}
+.freq-note {
+  margin: 6px 0 10px;
+  line-height: 1.7;
+}
+
+/* 数値入力＋符号反転ボタン。iOSの数字キーパッドにマイナスキーがないための救済。 */
+.num-input {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+.num-input input {
+  flex: 1;
+  min-width: 0;
+}
+.sign-btn {
+  flex: 0 0 auto;
+  width: 52px;
+  background: var(--surface2);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sign-btn:active {
+  background: var(--accent-deep);
+}
+
+/* 記述式 問2 の条文穴埋め */
+.art-fill {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 13px;
+  margin: 8px 0 12px;
+  font-size: 13.5px;
+  line-height: 2;
+}
+.art-fill .art-blank {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.table-scroll table.simple {
+  min-width: 380px;
+}
+.table-scroll th,
+.table-scroll td.num {
+  white-space: nowrap;
+}
+
+.lecture-body p {
+  margin-bottom: 10px;
+}
+.lecture-body ul,
+.lecture-body ol {
+  margin: 0 0 10px 18px;
+}
+.lecture-body li {
+  margin-bottom: 4px;
+}
+.lecture-body h4 {
+  font-size: 14px;
+  color: var(--accent);
+  margin: 16px 0 6px;
+  padding-left: 8px;
+  border-left: 3px solid var(--accent);
+}
+.lecture-body .pt {
+  background: rgba(79, 195, 247, 0.08);
+  border: 1px solid rgba(79, 195, 247, 0.3);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 10px 0;
+  font-size: 13.5px;
+}
+.lecture-body .pt::before {
+  content: "⚖️ 超頻出 ";
+  font-weight: 700;
+  color: var(--accent);
+}
+.lecture-body .ex {
+  background: rgba(102, 187, 106, 0.08);
+  border: 1px solid rgba(102, 187, 106, 0.3);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 10px 0;
+  font-size: 13.5px;
+}
+.lecture-body .ex::before {
+  content: "📝 具体例 ";
+  font-weight: 700;
+  color: var(--ok);
+}
+/* 物語の具体例。抽象的な条文の当てはめを、名前のある人が持ち込んだ相談として見せる。
+   説明役は鹿沼亮調査士で固定し、依頼者は毎回別人にする（Takuya決裁 2026-09-06）。
+   既存の 📝 具体例（.ex）は要点の当てはめ、こちらは場面そのもの。役割が違うので色も分ける。 */
+.lecture-body .story {
+  background: rgba(77, 182, 172, 0.08);
+  border: 1px solid rgba(77, 182, 172, 0.32);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 12px 0;
+  font-size: 13.5px;
+  line-height: 1.85;
+}
+.lecture-body .story::before {
+  content: "💬 鹿沼事務所にて ";
+  font-weight: 700;
+  color: #4db6ac;
+}
+html[data-theme="light"] .lecture-body .story::before {
+  color: #00796b;
+}
+.lecture-body .story .said {
+  display: block;
+  margin-top: 6px;
+}
+/* 物語の結び。場面と当てはめだけで終わると「で、自分はどうなるのか」が残らないので、
+   どの物語も必ず「こうなる（結果）」と「打つ手（何をすれば解決するか）」で閉じる。 */
+.lecture-body .story .st-out,
+.lecture-body .story .st-do {
+  display: block;
+  margin-top: 7px;
+  padding-left: 10px;
+  border-left: 2px solid var(--ex-bar);
+}
+.lecture-body .story .st-out b:first-child,
+.lecture-body .story .st-do b:first-child {
+  color: var(--ex-bar);
+  margin-right: 6px;
+}
+html[data-theme="light"] .lecture-body .story .st-out b:first-child,
+html[data-theme="light"] .lecture-body .story .st-do b:first-child {
+  color: #00695c;
+}
+/* 締め。結果と打つ手だけで終わると箇条書きになってしまうので、
+   最後に「鹿沼が依頼者に通じる言葉で言い直し、依頼者が動く」ところまで書く。
+   ここは地の文として読ませたいので、ラベルも罫線も付けない。 */
+.lecture-body .story .st-end {
+  display: block;
+  margin-top: 9px;
+}
+/* 場合分け。状況が変われば結論も変わる論点は、場合ごとにタブで出す。
+   タブはapp.jsが .st-label から組み立てる。ラベルを本文の中に置いておくのは、
+   読み上げが「◯◯の場合」→その本文の順で正しく流れるようにするため。
+   JSが動かなければ全部の場合が並んで見える形に倒れる。 */
+.lecture-body .story.has-tabs .st-label {
+  display: none;
+}
+.lecture-body .story.has-tabs .st-case {
+  display: none;
+}
+.lecture-body .story.has-tabs .st-case.on {
+  display: block;
+}
+.lecture-body .story .st-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 10px;
+}
+.lecture-body .story .st-tab {
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 12px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.lecture-body .story .st-tab.on {
+  color: var(--bg);
+  background: var(--ex-bar);
+  border-color: var(--ex-bar);
+}
+.lecture-body .trap {
+  background: rgba(239, 83, 80, 0.08);
+  border: 1px solid rgba(239, 83, 80, 0.3);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 10px 0;
+  font-size: 13.5px;
+}
+.lecture-body .trap::before {
+  content: "⚠️ ひっかけ注意 ";
+  font-weight: 700;
+  color: var(--ng);
+}
+.lecture-body .why {
+  background: var(--surface2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 10px 0;
+  font-size: 13.5px;
+}
+.lecture-body .why::before {
+  content: "💡 なぜそうなるか ";
+  font-weight: 700;
+  color: var(--warn);
+}
+/* 判例カード：事案→争点→結論→理由 を必ずこの順で書く。結論だけ覚えると
+   事案が少しずれた肢に対応できないため、講義では事実関係から示す。 */
+.lecture-body .hanrei {
+  background: rgba(186, 104, 200, 0.08);
+  border: 1px solid rgba(186, 104, 200, 0.35);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 12px 0;
+  font-size: 13.5px;
+}
+.lecture-body .hanrei::before {
+  content: "⚖️ 判例 ";
+  font-weight: 700;
+  color: #ce93d8;
+}
+.lecture-body .hanrei .hl {
+  display: block;
+  margin-top: 7px;
+}
+.lecture-body .hanrei .hl b:first-child {
+  color: #ce93d8;
+}
+/* 演習：読むだけで終わらせないための小問。答えは details で隠す。 */
+.lecture-body .drill {
+  background: rgba(255, 167, 38, 0.07);
+  border: 1px solid rgba(255, 167, 38, 0.32);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 12px 0;
+  font-size: 13.5px;
+}
+.lecture-body .drill::before {
+  content: "✍️ 確認問題 ";
+  font-weight: 700;
+  color: var(--warn);
+}
+.lecture-body .drill ol {
+  margin: 8px 0 0 20px;
+}
+.lecture-body .drill li {
+  margin-bottom: 6px;
+}
+.lecture-body details {
+  margin-top: 9px;
+  border-top: 1px dashed var(--border);
+  padding-top: 8px;
+}
+.lecture-body details > summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 13px;
+  list-style: none;
+  user-select: none;
+}
+.lecture-body details > summary::-webkit-details-marker {
+  display: none;
+}
+.lecture-body details > summary::before {
+  content: "▶ ";
+}
+.lecture-body details[open] > summary::before {
+  content: "▼ ";
+}
+.lecture-body details > summary + * {
+  margin-top: 8px;
+}
+.lecture-body table.simple {
+  font-size: 12.5px;
+}
+
+canvas.fig {
+  width: 100%;
+  background: #fff;
+  border-radius: 10px;
+  margin: 10px 0;
+}
+
+/* 計算手法ガイド */
+.formula {
+  background: rgba(2, 136, 209, 0.12);
+  border: 1px solid var(--accent-deep);
+  border-radius: 10px;
+  padding: 11px 13px;
+  margin: 12px 0;
+  font-size: 13.5px;
+  line-height: 1.9;
+}
+.formula::before {
+  content: "📐 公式 ";
+  font-weight: 700;
+  color: var(--accent);
+  display: block;
+  margin-bottom: 4px;
+}
+.method {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin: 12px 0;
+  background: var(--surface);
+  overflow: hidden;
+}
+.method > h4.mh {
+  margin: 0;
+  padding: 9px 13px;
+  font-size: 13.5px;
+  border-left: none;
+  font-weight: 700;
+}
+.method > .lecture-body {
+  padding: 4px 13px 12px;
+}
+.method.cplx > h4.mh {
+  background: rgba(79, 195, 247, 0.14);
+  color: var(--accent);
+}
+.method.calc > h4.mh {
+  background: rgba(102, 187, 106, 0.14);
+  color: var(--ok);
+}
+.method.hand > h4.mh {
+  background: rgba(255, 183, 77, 0.14);
+  color: var(--warn);
+}
+.method ol,
+.method ul {
+  margin: 6px 0 8px 20px;
+}
+.method li {
+  margin-bottom: 5px;
+}
+
+.statgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.stat {
+  background: var(--surface2);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+}
+.stat .v {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--accent);
+}
+.stat .l {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.timer {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--warn);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+/* フル模試の浮かぶタイマー（全フェーズ共通） */
+.mock-timer {
+  position: fixed;
+  top: 52px;
+  right: 10px;
+  z-index: 40;
+  font-size: 15px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--warn);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+.qhead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+/* 記述式の絞り込み。29本を平坦に並べると未着手も苦手も探せない。 */
+.wfilter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 4px 10px;
+}
+.wf {
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+.wf b {
+  color: var(--text);
+  margin-left: 2px;
+  font-size: 12px;
+}
+.wf.on {
+  background: var(--accent-deep);
+  color: #fff;
+  border-color: var(--accent-deep);
+}
+.wf.on b {
+  color: #fff;
+}
+.wf[disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* 記述式の難易度。基礎→標準→応用と積み上げられるようにする。 */
+.wlv {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.wlv.wl-b {
+  background: rgba(102, 187, 106, 0.14);
+  color: #9ccc9e;
+  border: 1px solid rgba(102, 187, 106, 0.4);
+}
+.wlv.wl-s {
+  background: rgba(79, 195, 247, 0.14);
+  color: #8ed3f5;
+  border: 1px solid rgba(79, 195, 247, 0.4);
+}
+.wlv.wl-a {
+  background: rgba(255, 167, 38, 0.14);
+  color: #ffce8a;
+  border: 1px solid rgba(255, 167, 38, 0.42);
+}
+
+/* 結果画面の「間違えた分野」。正答率だけでは次に何をやるかが決まらない。 */
+.wrongbox {
+  margin: 10px 0 4px;
+}
+.wrongrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 6px;
+}
+.wrongcat {
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(239, 83, 80, 0.1);
+  color: var(--text);
+  border: 1px solid rgba(239, 83, 80, 0.35);
+}
+.wrongcat b {
+  color: #ef9a9a;
+  margin-left: 2px;
+}
+.wrongcat:active {
+  background: rgba(239, 83, 80, 0.2);
+}
+
+/* 1セッションの問題数を選ぶ。20問固定だと重くて手が止まる日が出るため。 */
+.seglen {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 8px 0 10px;
+}
+.seglen-btns {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  overflow: hidden;
+}
+.seglen-b {
+  appearance: none;
+  border: 0;
+  background: var(--surface2);
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 15px;
+  cursor: pointer;
+  border-right: 1px solid var(--border);
+}
+.seglen-b:last-child {
+  border-right: 0;
+}
+.seglen-b.on {
+  background: var(--accent-deep);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* セッション中の進捗バー。あと何問かが常に見えると最後までやり切りやすい。 */
+.sess-bar {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--surface2);
+  overflow: hidden;
+  margin: 0 0 10px;
+}
+.sess-bar > div {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent-deep), var(--accent));
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 連続正解。2問以上続いたときだけ出す（毎回出すと無意味になる） */
+.combo {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #ffcf70;
+  background: rgba(255, 183, 77, 0.14);
+  border: 1px solid rgba(255, 183, 77, 0.4);
+}
+.combo.hot {
+  color: #ffb0a0;
+  background: rgba(239, 83, 80, 0.16);
+  border-color: rgba(239, 83, 80, 0.45);
+}
+
+/* 正誤の一瞬の手ごたえ。派手にせず、視線を解説へ誘導する程度にとどめる。 */
+@keyframes fbIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fbShake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+.expl.fb-ok {
+  animation: fbIn 0.22s ease-out;
+}
+.expl.fb-ng {
+  animation: fbShake 0.3s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sess-bar > div {
+    transition: none;
+  }
+  .expl.fb-ok,
+  .expl.fb-ng {
+    animation: none;
+  }
+}
+.statement {
+  white-space: pre-wrap;
+}
+.mono {
+  font-variant-numeric: tabular-nums;
+}
+hr.sep {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 14px 0;
+}
+.back {
+  color: var(--accent);
+  background: none;
+  border: none;
+  font-size: 14px;
+  font-family: inherit;
+  padding: 0 0 10px;
+  cursor: pointer;
+}
+
+/* 重要度★ */
+.imp {
+  color: var(--warn);
+  font-size: 13px;
+  letter-spacing: 1px;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+.imp .imp-off {
+  color: var(--border);
+}
+
+/* 条文リンク（タップで吹き出し） */
+.artlink {
+  color: var(--accent);
+  border-bottom: 1px dashed var(--accent);
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0 1px;
+}
+.artlink:active {
+  background: rgba(79, 195, 247, 0.18);
+}
+/* SVG図解内のタップ可能な条文（border-bottomはSVGに効かないので下線で示す） */
+text.artlink {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dashed;
+}
+#artOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 20px;
+}
+.art-pop {
+  background: var(--surface);
+  border: 1px solid var(--accent-deep);
+  border-radius: 14px;
+  max-width: 560px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 14px 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.art-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.art-head b {
+  color: var(--accent);
+  font-size: 15px;
+}
+.art-close {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+}
+.art-pop-title {
+  font-weight: 700;
+  margin: 8px 0 6px;
+  font-size: 13.5px;
+  color: var(--text);
+}
+.art-pop-text {
+  font-size: 13.5px;
+  line-height: 1.95;
+  color: var(--text);
+}
+/* 条文の試験重要部分の強調（蛍光ペン風）。
+   文字色は指定せず本文色を継ぐ。以前は #fff3c4 固定だったためライトテーマの
+   白背景では読めなかった。帯の色だけをテーマ変数にして、明暗どちらでも
+   「濃い帯＋反対の文字色」になるようにする。 */
+.art-pop-text .art-hl {
+  font-style: normal;
+  font-weight: 700;
+  color: inherit;
+  background: linear-gradient(transparent 56%, var(--hl-band) 56%);
+  padding: 0 1px;
+}
+/* 条文中の注記（判例・趣旨など）を小さく添える */
+.art-pop-text .art-note {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  border-left: 2px solid var(--accent-deep);
+  padding-left: 8px;
+}
+/* 「この条文はここが問われる」を示すメモ。注記より目立たせる */
+.art-pop-text .art-key {
+  display: block;
+  margin-top: 10px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: var(--text);
+  background: var(--key-bg);
+  border-left: 3px solid var(--key-bar);
+  border-radius: 0 8px 8px 0;
+}
+.art-pop-text .art-key::before {
+  content: "⚖️ 試験ではここ　";
+  font-weight: 700;
+  color: var(--key-bar);
+}
+/* 条文を具体的な場面に落とした例。条文は抽象的な書き方をするので、
+   「誰が・何をしたら・どうなる」を1つ添えないと読んでも頭に残らない。
+   試験メモ（青）とは別の色にして、役割の違いが一目で分かるようにする。 */
+.art-pop-text .art-ex {
+  display: block;
+  margin-top: 10px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: var(--text);
+  background: var(--ex-bg);
+  border-left: 3px solid var(--ex-bar);
+  border-radius: 0 8px 8px 0;
+}
+.art-pop-text .art-ex::before {
+  content: "📌 たとえば　";
+  font-weight: 700;
+  color: var(--ex-bar);
+}
+/* 逐語の裏が取れていない条文に付ける断り書き。誤解させないことが最優先 */
+.art-pop-text .art-warn {
+  display: block;
+  margin-top: 10px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: var(--text);
+  background: var(--warn-bg);
+  border-left: 3px solid var(--warn);
+  border-radius: 0 8px 8px 0;
+}
+.art-pop-text .art-warn::before {
+  content: "⚠️ 逐語ではありません　";
+  font-weight: 700;
+  color: var(--warn);
+}
+
+/* パターン図解（動く図解） */
+.pat-stage {
+  background: #0c1014;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 6px;
+  margin: 10px 0;
+}
+.patsvg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.cxsvg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.calc-anim svg [data-from] {
+  opacity: 0;
+}
+.cx-legend-box {
+  margin: 8px 0 2px;
+}
+.cx-legend-box > summary {
+  cursor: pointer;
+  padding: 4px 0;
+}
+table.simple.cx-legend {
+  font-size: 12px;
+  margin: 6px 0 2px;
+}
+table.simple.cx-legend td {
+  padding: 4px 7px;
+}
+.pat-progress {
+  height: 6px;
+  background: var(--surface2);
+  border-radius: 99px;
+  overflow: hidden;
+  margin: 4px 0 8px;
+}
+.pat-progress > div {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--accent-deep), var(--accent));
+  transition: width 0.4s;
+}
+.pat-narr {
+  background: var(--surface2);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 10px 10px 0;
+  padding: 11px 13px;
+  font-size: 14px;
+  line-height: 1.85;
+  min-height: 70px;
+}
+.pat-step {
+  display: inline-block;
+  background: var(--accent-deep);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+  margin-right: 8px;
+}
+
+/* 記述式: タイマー・項目別配点・作図ステップ */
+.w-timer {
+  float: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--accent);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 2px 10px;
+}
+.w-timer.over {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+.ok-text {
+  color: var(--ok);
+  font-weight: 700;
+}
+.ng-text {
+  color: var(--warn);
+  font-weight: 700;
+}
+.score-breakdown {
+  margin: 12px 4px 4px;
+}
+.sb-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin: 8px 0 3px;
+}
+.sb-bar {
+  height: 7px;
+  background: var(--surface);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.sb-bar > div {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-deep), var(--accent));
+  border-radius: 99px;
+  transition: width 0.5s;
+}
+.fig-steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 4px;
+}
+.fig-steps .chip {
+  background: var(--surface);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 5px 11px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.fig-steps .chip.active {
+  background: var(--accent);
+  color: #00121b;
+  border-color: var(--accent);
+  font-weight: 700;
+}
+
+/* 作図の自己チェック（機械採点できない図面の記載事項を項目化したもの） */
+.fig-check {
+  margin: 12px 4px 4px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.fig-check-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.fig-check-item input {
+  margin-top: 3px;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+/* 横断検索 */
+.search-box {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 4px 0 2px;
+  padding: 11px 14px;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  outline: none;
+}
+.search-box:focus {
+  border-color: var(--accent);
+}
+.srch-gh {
+  margin: 12px 4px 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.03em;
+}
+.srch-item {
+  padding: 11px 13px;
+  margin: 6px 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.srch-item summary {
+  cursor: pointer;
+  list-style: revert;
+}
+.srch-item[open] summary {
+  margin-bottom: 6px;
+}
+mark {
+  background: rgba(79, 195, 247, 0.28);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+/* 学習推移ミニチャート */
+.trend-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin: 6px 0 2px;
+}
+
+/* ライトテーマ（主要UIは変数で切替。図は可読性のため暗いままにする） */
+html[data-theme="light"] {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --surface2: #eef1f5;
+  --border: #d6dde4;
+  --text: #1b2733;
+  --muted: #5c6b78;
+  --accent: #0277bd;
+  --accent-deep: #01579b;
+  --hl-band: rgba(245, 158, 11, 0.42);
+  --key-bg: rgba(2, 119, 189, 0.09);
+  --key-bar: #0277bd;
+  --warn-bg: rgba(217, 119, 6, 0.1);
+  --ex-bg: rgba(46, 125, 50, 0.09);
+  --ex-bar: #2e7d32;
+}
+/* 動く図解・講義図はテキスト色が暗色前提でハードコードされているため、ライトでも暗い背景を維持 */
+html[data-theme="light"] .pat-stage {
+  background: #0c1014;
+  border-color: #2e3942;
+}
+html[data-theme="light"] .lecfig {
+  background: #1a2026;
+  border-color: #2e3942;
+}
+html[data-theme="light"] .pat-narr {
+  background: #eef1f5;
+}
+html[data-theme="light"] mark {
+  background: rgba(2, 119, 189, 0.2);
+}
+/* ヘッダー/タブバーは背景がハードコードのため明色へ上書き */
+html[data-theme="light"] #appHeader {
+  background: rgba(255, 255, 255, 0.92);
+}
+html[data-theme="light"] #tabBar {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+/* 表示設定（文字サイズ・目標） */
+html[data-fz="s"] body {
+  font-size: 13.5px;
+}
+html[data-fz="l"] body {
+  font-size: 17px;
+}
+html[data-fz="xl"] body {
+  font-size: 19px;
+}
+.set-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+}
+.set-row > span {
+  font-size: 14px;
+}
+.set-row input[type="number"] {
+  width: 84px;
+  padding: 8px 10px;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-align: right;
+}
+.seg {
+  display: inline-flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.seg button {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 7px 13px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.seg button.active {
+  background: var(--accent);
+  color: #00121b;
+  font-weight: 700;
+}
+
+/* 関数電卓 */
+.calc-disp {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 22px;
+  text-align: right;
+  padding: 11px 13px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.calc-res {
+  text-align: right;
+  font-size: 15px;
+  color: var(--accent);
+  min-height: 20px;
+  margin: 5px 2px 9px;
+  font-variant-numeric: tabular-nums;
+}
+.calc-pad {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+}
+.calc-key {
+  padding: 13px 0;
+  font-size: 17px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  cursor: pointer;
+}
+.calc-key.op {
+  color: var(--accent);
+  font-weight: 700;
+}
+.calc-key.fn {
+  font-size: 14px;
+  color: var(--muted);
+}
+.calc-key.eq {
+  grid-column: 1 / -1;
+  background: var(--accent);
+  color: #00121b;
+  font-weight: 700;
+}
+.calc-key.eq3 {
+  grid-column: span 3;
+  background: var(--accent);
+  color: #00121b;
+  font-weight: 700;
+}
+.dms-in {
+  width: 62px;
+  padding: 8px;
+  margin-left: 4px;
+  font-size: 15px;
+  text-align: right;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.dms-in.wide {
+  width: 150px;
+}
+.seg.seg-wide {
+  display: flex;
+  width: 100%;
+}
+.seg.seg-wide button {
+  flex: 1;
+}
+.calc-res code,
+.lecture-body code,
+p code {
+  background: var(--surface2);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.92em;
+}
+/* ずんだもん音声プレイヤーバー（事前生成MP3再生・クレジット必須） */
+#zPlayer {
+  position: fixed;
+  left: 8px;
+  right: 8px;
+  bottom: calc(62px + env(safe-area-inset-bottom));
+  z-index: 46;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: var(--surface2);
+  border: 1px solid var(--accent-deep);
+  border-radius: 12px;
+  padding: 8px 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+#zPlayer button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  width: 38px;
+  height: 34px;
+  font-size: 15px;
+  cursor: pointer;
+}
+#zPlayer #zLabel {
+  flex: 1;
+  min-width: 60px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#zPlayer .z-credit {
+  width: 100%;
+  font-size: 10px;
+  color: var(--muted);
+}
+/* 再生位置。講義は12〜22分あるので、どこを聞いているか・どこへ飛ぶかが要る */
+#zPlayer .z-seek {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#zPlayer .z-seek span {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 38px;
+}
+#zPlayer .z-seek span:last-child {
+  text-align: right;
+}
+#zPlayer #zSeek {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--surface);
+  outline: none;
+}
+#zPlayer #zSeek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+}
+#zPlayer #zSeek::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+}
+#zPlayer #zBack,
+#zPlayer #zFwd {
+  font-size: 13px;
+}
+@media (prefers-reduced-motion: reduce) {
+  #zPlayer #zSeek {
+    transition: none;
+  }
+}
+
+/* 電卓フローティングボタン＋オーバーレイ（計算問題・記述式から電卓を開く） */
+.calc-fab {
+  position: fixed;
+  right: 16px;
+  bottom: calc(74px + env(safe-area-inset-bottom));
+  z-index: 44;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: #00121b;
+  font-size: 24px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+#calcOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  overflow-y: auto;
+  padding: 24px 10px;
+}
+.calc-modal {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 10px 12px 16px;
+}
+.calc-modal-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 1;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* 電卓のメモリ表示・インライン枠 */
+.calc-mem {
+  text-align: right;
+  font-size: 12px;
+  color: var(--warn);
+  font-weight: 700;
+  min-height: 16px;
+  margin: 0 2px 4px;
+  font-variant-numeric: tabular-nums;
+}
+#calcInline {
+  margin-top: 4px;
+}
+#calcInline:empty {
+  display: none;
+}
+#calcInline h2 {
+  display: none;
+} /* インラインでは「関数電卓」見出しは省く */
+
+/* 複素数モード OPTN 機能チップ */
+.optn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0 10px;
+}
+.optn-row .chip {
+  background: var(--surface2);
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 11px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.optn-row .chip.active {
+  background: var(--accent);
+  color: #00121b;
+  font-weight: 700;
+  border-color: var(--accent);
+}
+/* 連立方程式 */
+.eqn-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin: 9px 0;
+}
+.eqn-in {
+  width: 56px;
+  padding: 8px 6px;
+  font-size: 15px;
+  text-align: right;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.eqn-var {
+  font-style: italic;
+  font-weight: 700;
+  margin-right: 2px;
+}
+.eqn-op {
+  color: var(--muted);
+}
+
+/* 混同しやすい論点の対比（間違えた直後に出す） */
+.contrast {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 167, 38, 0.35);
+  border-radius: 10px;
+  background: rgba(255, 167, 38, 0.07);
+  font-size: 13px;
+}
+.contrast > b {
+  display: block;
+  margin-bottom: 6px;
+  color: #ffb74d;
+  font-size: 12.5px;
+}
+.cxrow + .cxrow {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255, 167, 38, 0.25);
+}
+.cxpair {
+  font-weight: 700;
+  line-height: 1.5;
+}
+.cxpair span {
+  color: #ffb74d;
+  margin: 0 2px;
+}
+.cxaxis {
+  margin-top: 3px;
+  color: var(--muted);
+  line-height: 1.6;
+}
