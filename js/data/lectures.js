@@ -1446,6 +1446,7 @@ A: 120×(106−104)=240<br>P: 120×(114−100)=1680<br>Q: 100×(104−106)=−20
 <span class="st-do"><b>打つ手</b><b>現況を確認し、認定できる段階に達していれば表題登記を申請する</b>。<b>建築基準法の完了検査とは別の判断</b>なので、検査済証がなくても登記できる。</span>
 <span class="st-end">「検査済証はまだですが、登記はできます」。担当者が「役所の検査が先ではないんですか」と聞くと、鹿沼は首を振った。「<b>あれは建築基準法の話で、登記とは別の物差しです</b>。登記が見るのは、<b>取引の対象として扱える建物になっているか</b>だけ。ここを混ぜる肢が出ますので、覚えておいてください」</span></div></div><!--/story-->
 <h4>3. 屋根・上屋の有無で範囲が決まるもの</h4>
+<!--photo--><div class="ph-row"><figure class="ph"><img src="img/platform-canopy.webp" alt="上屋に覆われた駅のホームと、その先の露天部分" loading="lazy" decoding="async"><figcaption>駅のホーム。<b>上屋の下は覆われ、その先は露天</b>になっている。建物になるのは上屋のある部分だけである。</figcaption><span class="ph-credit">© Steve Houldsworth / CC BY-SA 2.0 — Wikimedia Commons</span></figure><figure class="ph"><img src="img/grandstand-roof.webp" alt="屋根のあるスタンドと屋根のない観覧席がある競技場" loading="lazy" decoding="async"><figcaption>競技場の観覧席。<b>屋根のあるスタンドと、屋根のない部分</b>がある。建物になるのは屋根のある部分だけである。</figcaption><span class="ph-credit">© Loulanshinsui / CC BY-SA 4.0 — Wikimedia Commons</span></figure></div><!--/photo-->
 <table class="simple">
 <tr><th>構造物</th><th>建物として扱う範囲</th></tr>
 <tr><td>停車場の<b>乗降場・荷物積卸場</b></td><td><b>上屋を有する部分のみ</b></td></tr>
@@ -7088,6 +7089,7 @@ A: 120×(106−104)=240<br>P: 120×(114−100)=1680<br>Q: 100×(104−106)=−20
 <span class="st-do"><b>打つ手</b><b>外気に接しているか、使えない高さか、床がないかを確かめる</b>。</span>
 <span class="st-end">「一覧は<b>結論の集まり</b>です」。鹿沼は伏せた表を指した。「<b>先に理由のほうを持ってください</b>。<b>内か外か、使えるか、床があるか</b>——この3つで、初めて見る事例でも判断できます。一覧を覚えるのは、その後で十分です」</span></div></div><!--/story-->
 <h4>3. 吹抜け — 「上階では」不算入</h4>
+<!--photo--><figure class="ph"><img src="img/void-atrium.webp" alt="各階が中央の吹抜けを取り巻いている建物の内部" loading="lazy" decoding="async"><figcaption>各階が中央の吹抜けを取り巻いている。<b>底の階には床があり、上階のこの部分には床がない</b>——階によって結論が変わるのはこの形である。</figcaption><span class="ph-credit">The Nature Box / CC0 — Wikimedia Commons</span></figure><!--/photo-->
 <p><b>結論</b>——建物の一部が上階まで吹抜けになっている場合、その吹抜けの部分は<b>上階の床面積に算入しない</b>（準則82条8号）。</p>
 <div class="trap">「吹抜けの部分は<b>各階で</b>算入しない」は<b>誤り</b>。<br>
 不算入になるのは<b>上階</b>の床面積についてである。<b>吹抜けの底となる階</b>では、そこに床があるので<b>通常の床として算入</b>する。<br>
@@ -7107,6 +7109,7 @@ A: 120×(106−104)=240<br>P: 120×(114−100)=1680<br>Q: 100×(104−106)=−20
 <span class="st-do"><b>打つ手</b><b>2階の床面積からは、吹抜けの部分を除いて計算する</b>。</span>
 <span class="st-end">「『吹抜けの部分は<b>各階で</b>算入しない』——<b>これは誤りです</b>」。鹿沼は2つの階を分けて描いた。「<b>不算入になるのは上階の床面積についてだけ</b>。1階には入り、2階には入りません」。なお<b>吹抜けにある階段が、手すりで仕切られているだけで階段室を構成していないとき</b>の扱いも、あわせて押さえておく。</span></div></div><!--/story-->
 <h4>4. 階段・エレベーター</h4>
+<!--photo--><figure class="ph"><img src="img/stair-outdoor.webp" alt="建物の外壁に取り付けられた鉄骨の屋外階段" loading="lazy" decoding="async"><figcaption>建物に附属する<b>屋外の階段</b>。建物の外にあり、外気から遮られていない。</figcaption><span class="ph-credit">© Marek Ślusarczyk (Tupungato) Photo portfolio / CC BY 3.0 — Wikimedia Commons</span></figure><!--/photo-->
 <table class="simple">
 <tr><th>対象</th><th>結論</th></tr>
 <tr><td>階段室</td><td><b>各階の床面積に算入</b>（床を有するものとみなす）</td></tr>
@@ -7126,6 +7129,7 @@ A: 120×(106−104)=240<br>P: 120×(114−100)=1680<br>Q: 100×(104−106)=−20
 <span class="st-do"><b>打つ手</b><b>床面積から除く</b>。</span>
 <span class="st-end">「同じ階段でも、<b>内にあるか外にあるか</b>で正反対です」。鹿沼は2つを描き分けた。「<b>内か外か</b>——これが分かれ目です。<b>形ではなく、位置で決まります</b>」</span></div></div><!--/story-->
 <h4>5. 開放された部分</h4>
+<!--photo--><div class="ph-row"><figure class="ph"><img src="img/balcony-open.webp" alt="手すりだけで外に開放された集合住宅のバルコニー" loading="lazy" decoding="async"><figcaption>手すりだけで<b>外に開放されたバルコニー</b>。</figcaption><span class="ph-credit">© Sgroey / CC BY-SA 4.0 — Wikimedia Commons</span></figure><figure class="ph"><img src="img/porch-open.webp" alt="柱で屋根を支え三方が開いた玄関ポーチ" loading="lazy" decoding="async"><figcaption>柱で屋根を支え、<b>三方が開いた玄関ポーチ</b>。</figcaption><span class="ph-credit">アメリカ歴史的建造物調査（HABS） / Public domain — Wikimedia Commons</span></figure></div><!--/photo-->
 <table class="simple">
 <tr><th>対象</th><th>結論</th></tr>
 <tr><td>外側に開放されたベランダ・バルコニー</td><td><b>算入しない</b></td></tr>
@@ -7167,6 +7171,7 @@ A: 120×(106−104)=240<br>P: 120×(114−100)=1680<br>Q: 100×(104−106)=−20
 <span class="st-do"><b>打つ手</b><b>繰り上げて表示する</b>。1階・中2階・2階の3層で各100㎡なら、登記記録は「1階100.00㎡ 2階100.00㎡ 3階100.00㎡」となる。</span>
 <span class="st-end">「建物としては<b>3層あります</b>」。鹿沼は断面を描いて数えた。「登記では『中2階』という言い方をしないので、<b>下から順に1階・2階・3階と数え直します</b>」。関口さんが「実際の呼び方と変わってしまいますね」と言うと、鹿沼はうなずいた。「そこが引っかけになります。なお<b>塔屋は、天井高1.5メートル以上でも居住性・用途性を欠けば不算入</b>です」</span></div></div><!--/story-->
 <h4>7. 屋根が開閉する建物</h4>
+<!--photo--><figure class="ph"><img src="img/roof-retractable.webp" alt="可動屋根を閉じた状態のスタジアム内部" loading="lazy" decoding="async"><figcaption>屋根が開閉する建物（<b>閉じた状態</b>）。中央に、開閉する部分の継ぎ目が見える。</figcaption><span class="ph-credit">edwarddallas / Public domain — Wikimedia Commons</span></figure><!--/photo-->
 <div class="ex"><b>一時的に屋根を開閉する機能を有する建物</b><br>
 開閉式の屋根であっても<b>構造上屋根を有する</b>ことに変わりはない。したがって開閉可能部分の下も含めて<b>全体を床面積に算入</b>する。<br>
 「屋根を開くことができる部分の直下は算入しない」という肢は<b>誤り</b>である。</div>
@@ -7278,6 +7283,7 @@ A: 120×(106−104)=240<br>P: 120×(114−100)=1680<br>Q: 100×(104−106)=−20
 <span class="st-do"><b>打つ手</b><b>種類が変わったら1か月以内に表題部の変更の登記を申請する</b>（法51条）。ただし<b>図面は不要</b>——形が変わらないからである。</span>
 <span class="st-end">「居宅兼店舗、と書きたくなりますよね」。鹿沼は2つの書き方を並べた。「<b>登記では中点でつなぎます</b>。それと、店舗を居宅に戻したような場合も変更の登記が要ります。<b>ただし図面は要りません</b>。<b>形が変わったか</b>——判断軸はいつも同じです」</span></div></div><!--/story-->
 <h4>3. 構造は3要素</h4>
+<!--photo--><div class="ph-row"><figure class="ph"><img src="img/struct-wood.webp" alt="木の柱と梁と筋かいを組んだ建築中の骨組み" loading="lazy" decoding="async"><figcaption>木の柱・梁・筋かいを組んだ骨組み。この骨組みが建物を支えているので、構成材料は<b>木造</b>と表示する。</figcaption><span class="ph-credit">© メルビル / CC BY 3.0 — Wikimedia Commons</span></figure><figure class="ph"><img src="img/struct-steel.webp" alt="鉄骨の柱と梁を組み上げた建築中の骨組み" loading="lazy" decoding="async"><figcaption>鉄骨を柱と梁に組んだ骨組み。構成材料は<b>鉄骨造</b>と表示する。</figcaption><span class="ph-credit">© Dwight Burdette / CC BY 3.0 — Wikimedia Commons</span></figure><figure class="ph"><img src="img/struct-rc.webp" alt="型枠を組み鉄筋を立ち上げて施工中のコンクリート建物" loading="lazy" decoding="async"><figcaption>型枠を組み、鉄筋を立ち上げて造っている建物。鉄筋とコンクリートが一体で支えるので、<b>鉄筋コンクリート造</b>と表示する。</figcaption><span class="ph-credit">© WTF Formwork http://www.wallties.com / CC BY-SA 3.0 — Wikimedia Commons</span></figure></div><!--/photo-->
 <div class="pt">構造＝<b>構成材料</b>＋<b>屋根の種類</b>＋<b>階数</b><br>
 例：<b>木造かわらぶき2階建</b></div>
 <table class="simple">
@@ -7314,6 +7320,7 @@ A: 120×(106−104)=240<br>P: 120×(114−100)=1680<br>Q: 100×(104−106)=−20
 <span class="st-do"><b>打つ手</b><b>同じく骨組みで判断する</b>。</span>
 <span class="st-end">「どちらも<b>ALC板に引っ張られると外します</b>」。鹿沼は2つを並べた。「そして床面積の測り方でも、<b>鉄骨造で外装材が薄い場合は柱の外面で測ります</b>。<b>ALC板を薄い外装材と位置づける点が、構造の表示と床面積の両方に通じています</b>。一度そう理解すれば、両方まとめて片づきます」</span></div></div><!--/story-->
 <h4>5. 屋根の種類の判定</h4>
+<!--photo--><div class="ph-row"><figure class="ph"><img src="img/roof-kawara.webp" alt="瓦をふいた日本家屋の屋根" loading="lazy" decoding="async"><figcaption>瓦をふいた屋根。登記では<b>かわらぶき</b>と表示する。</figcaption><span class="ph-credit">© 松岡明芳 / CC BY-SA 4.0 — Wikimedia Commons</span></figure><figure class="ph"><img src="img/roof-slate.webp" alt="粘板岩の板を重ねてふいた屋根" loading="lazy" decoding="async"><figcaption>スレート（粘板岩の板）を重ねてふいた屋根。登記では<b>スレートぶき</b>と表示する。</figcaption><span class="ph-credit">© Dylan Moore / CC BY-SA 2.0 — Wikimedia Commons</span></figure><figure class="ph"><img src="img/roof-tin.webp" alt="波形の金属板でふいた住宅の屋根" loading="lazy" decoding="async"><figcaption>波形の金属板でふいた屋根。材料が亜鉛メッキ鋼板なら<b>亜鉛メッキ鋼板ぶき</b>と表示する。<b>塗装されていると見ただけでは材料が分からない</b>ので、現地で確かめる。</figcaption><span class="ph-credit">© John M / CC BY-SA 2.0 — Wikimedia Commons</span></figure><figure class="ph"><img src="img/roof-flat.webp" alt="コンクリートで平らに造られた建物の屋根" loading="lazy" decoding="async"><figcaption>コンクリートで平らに造られた屋根。<b>屋根そのものが平らな構造</b>なので陸屋根である。上に別の覆いをかぶせているなら、その覆いの材料で表示する。</figcaption><span class="ph-credit">© Bybbisch94, Christian Gebhardt / CC BY-SA 4.0 — Wikimedia Commons</span></figure></div><!--/photo-->
 <div class="ex">天井張りの上に<b>亜鉛メッキ鋼板の屋根構造の覆い</b>をかぶせた建物——その屋根が平らであっても「<b>陸屋根</b>」とはせず「<b>亜鉛メッキ鋼板ぶき</b>」と表示する。<br>
 陸屋根とは<b>屋根そのものが平らな構造</b>のものをいう。覆いをかぶせているなら、その覆いの材料で表示する。</div>
 
@@ -7568,6 +7575,7 @@ A: 120×(106−104)=240<br>P: 120×(114−100)=1680<br>Q: 100×(104−106)=−20
 ⑦ 管轄をまたぐ建物の家屋番号は<b>管轄指定を受けた登記所</b>の管轄する土地の地番による</div>
 
 <h4>1. 附属建物とは</h4>
+<!--photo--><figure class="ph"><img src="img/outbuilding.webp" alt="母屋の手前に土蔵が建っている一区画の敷地" loading="lazy" decoding="async"><figcaption>母屋と、同じ敷地に建つ土蔵。こうした<b>別棟が効用上一体として使われているとき</b>、主である建物と附属建物として<b>1個の建物</b>で登記される。附属建物には家屋番号が付かず、<b>符号</b>で特定する。</figcaption><span class="ph-credit">© 白蛇の騎士 / CC BY-SA 3.0 — Wikimedia Commons</span></figure><!--/photo-->
 <p><b>結論</b>——主である建物と効用上一体として使われる建物は、<b>1個の建物</b>として登記される。附属建物には<b>独立の家屋番号が付されず、符号</b>（符号1・符号2…）で特定する。</p>
 <table class="simple">
 <tr><th>論点</th><th>結論</th></tr>

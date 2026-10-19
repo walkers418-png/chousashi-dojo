@@ -1001,6 +1001,46 @@ html[data-theme="light"] .lecture-body .story .st-do b:first-child {
   background: var(--ex-bar);
   border-color: var(--ex-bar);
 }
+
+/* 実物写真。条文の言葉（かわらぶき・陸屋根など）と現場の見た目を結びつける */
+.lecture-body .ph {
+  margin: 12px 0;
+  min-width: 0; /* ph-row の中で、写真の幅が親をはみ出さないように */
+}
+.lecture-body .ph img {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* 読み込み前に本文が飛び跳ねないよう、場所を先取りしておく */
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface2);
+}
+.lecture-body .ph figcaption {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.75;
+}
+.lecture-body .ph .ph-credit {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--muted);
+  word-break: break-word;
+}
+/* 2枚以上は横に並べ、狭い画面では1列に折り返す */
+.lecture-body .ph-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+.lecture-body .ph-row .ph {
+  margin: 0;
+}
+
 .lecture-body .trap {
   background: rgba(239, 83, 80, 0.08);
   border: 1px solid rgba(239, 83, 80, 0.3);
