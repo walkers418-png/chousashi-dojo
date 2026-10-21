@@ -348,6 +348,23 @@ function floorKubunProblem(U) {
   };
 }
 
+// 同じ seed から同じ問題を再現する。
+// CalcUtil と各ジェネレーターは Math.random を直に呼ぶので、gen() の実行中だけ
+// seed 付きの乱数（written-gen.js の mulberry32）に差し替える。座標系は
+// 解答の数値に効くので、再現したい座標系 mode も一緒に切り替えて元に戻す。
+function withCalcSeed(seed, mode, fn) {
+  const origRandom = Math.random;
+  const origMode = CalcUtil.coordMode;
+  Math.random = wgRng(seed);
+  if (mode) CalcUtil.coordMode = mode;
+  try {
+    return fn();
+  } finally {
+    Math.random = origRandom;
+    CalcUtil.coordMode = origMode;
+  }
+}
+
 const CalcGen = {
   // ① 距離と方向角
   dist: {

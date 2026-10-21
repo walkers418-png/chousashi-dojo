@@ -28,7 +28,20 @@ const Store = {
     this._cache.memos = this._cache.memos || {}; // {"quiz:M01": "自分メモ"} 間違いノートのメモ
     this._cache.daily = this._cache.daily || {}; // {date: {ok, ng}} 日別の正答内訳（学習推移グラフ用）
     this._cache.calcDaily = this._cache.calcDaily || {}; // {date: 計算道場の解答数} 助走期間の毎日20分を促すため
+    this._cache.history = this._cache.history || []; // 解き直し用の履歴 [{kind, key, seed, mode, date, ok, score, total, sec}]
     return this._cache;
+  },
+
+  // 履歴は端末の容量を食わないよう新しい順に上限まで保持する
+  HISTORY_MAX: 300,
+
+  // 解いた1問を履歴に残す。seed と座標系があれば後日まったく同じ問題を再現できる。
+  // kind "calc": key=種目 / kind "written": key=テンプレートid。
+  recordHistory(rec) {
+    const d = this.load();
+    d.history.unshift(Object.assign({ date: this.today() }, rec));
+    if (d.history.length > this.HISTORY_MAX) d.history.length = this.HISTORY_MAX;
+    this.save();
   },
 
   save() {

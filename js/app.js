@@ -2946,6 +2946,10 @@ function renderCalcMenu() {
       <b style="color:var(--accent)">🔀 種目ごちゃ混ぜ（インターリービング）</b>
       <div class="muted small">毎問ランダムに別の種目を出題。「どの解法を使うか」を見抜く力が鍛わり、本試験に直結（研究で効果実証）</div>
     </div>
+    <div class="card clickable" data-history="calc" style="border:1px solid var(--accent-deep)">
+      <b style="color:var(--accent)">🔁 履歴・解き直し</b>
+      <div class="muted small">解いた問題を同じ数値でもう一度。間違えた問題だけに絞ることもできる。</div>
+    </div>
     <div class="card clickable" data-calc-tool="1" style="border:1px solid var(--accent-deep)">
       <b style="color:var(--accent)">🔢 関数電卓・度分秒変換</b>
       <div class="muted small">三角関数(度)・√の計算と、度分秒⇄十進度の相互変換。スキマ計算に。</div>
@@ -2991,6 +2995,9 @@ function renderCalcMenu() {
   view
     .querySelector("[data-calc-tool]")
     .addEventListener("click", renderCalculator);
+  view
+    .querySelector("[data-history]")
+    .addEventListener("click", () => renderHistory("calc"));
   view.querySelectorAll("[data-coord]").forEach((el) =>
     el.addEventListener("click", () => {
       CalcUtil.coordMode = el.dataset.coord;
@@ -3234,14 +3241,19 @@ function pickWeightedCalcType() {
   return CALC_TYPES[CALC_TYPES.length - 1];
 }
 
-function renderCalcProblem(type) {
+function renderCalcProblem(type, opts) {
+  opts = opts || {};
   // "__mix__" は種目をまぜるインターリービング: 毎問ランダムに別種目を出す
   const isMix = type === "__mix__";
   // ごちゃ混ぜは一様抽選ではなく出題頻度で重み付けする。
   // 本試験でよく使う型に多く当たり、薄い型にも一定の割合で触れられるようにするため。
   const realType = isMix ? pickWeightedCalcType() : type;
   const gen = CalcGen[realType];
-  const prob = gen.gen();
+  // 解き直しでは履歴の seed と座標系を渡され、同じ数値の問題が再現される
+  const seed = opts.seed || wgNewSeed();
+  const mode = opts.mode || CalcUtil.coordMode;
+  const prob = withCalcSeed(seed, mode, () => gen.gen());
+  let recorded = false;
   // 解答までの所要時間を計る。目標は1問5分以内（STUDY_PLAN Phase 2）。
   const startedAt = Date.now();
   const fieldsHtml = prob.fields
@@ -3261,8 +3273,9 @@ function renderCalcProblem(type) {
   view.innerHTML = `
     <button class="back" id="backBtn">← 計算道場メニュー</button>
     <div class="card">
-      ${isMix ? '<span class="tag">🔀 ごちゃ混ぜ</span>' : ""}${calcFreqBadge(realType)}
+      ${isMix ? '<span class="tag">🔀 ごちゃ混ぜ</span>' : ""}${opts.seed ? '<span class="tag">🔁 解き直し</span>' : ""}${calcFreqBadge(realType)}
       <h2>${esc(gen.name)}</h2>
+      <div class="muted small">問題番号 #${seed}（${mode === "jgd" ? "世界測地系" : "任意座標"}）</div>
       ${calcFreqNote(realType)}
       ${prob.html}
       ${fieldsHtml}
@@ -3270,6 +3283,7 @@ function renderCalcProblem(type) {
       <div id="resultBox"></div>
       <div class="btn-row">
         <button class="btn secondary" id="nextProb">次の問題</button>
+        <button class="btn ghost" id="sameProb">同じ問題をもう一度</button>
       </div>
     </div>
     <div id="calcInline" data-open="0"></div>
@@ -3281,6 +3295,11 @@ function renderCalcProblem(type) {
   document
     .getElementById("nextProb")
     .addEventListener("click", () => renderCalcProblem(type));
+  document
+    .getElementById("sameProb")
+    .addEventListener("click", () =>
+      renderCalcProblem(realType, { seed, mode }),
+    );
   wireSignButtons();
   document.getElementById("checkBtn").addEventListener("click", () => {
     let allOk = true;
@@ -3314,6 +3333,18 @@ function renderCalcProblem(type) {
     const sec = Math.round((Date.now() - startedAt) / 1000);
     const prevBest = (Store.load().calc[realType] || {}).bestSec || null;
     Store.recordCalc(realType, allOk, sec);
+    // 履歴は1画面につき最初の答え合わせだけ残す（同じ問題の再採点で水増ししない）
+    if (!recorded) {
+      recorded = true;
+      Store.recordHistory({
+        kind: "calc",
+        key: realType,
+        seed,
+        mode,
+        ok: allOk,
+        sec,
+      });
+    }
     updateStreak();
     const ansList = prob.fields
       .map(
@@ -3476,6 +3507,10 @@ function renderWrittenList() {
   view.innerHTML =
     `<h2 style="font-size:15px;margin:4px">記述式（書式）実践問題</h2>
     <p class="muted small" style="margin:0 4px 6px">紙と電卓と三角定規を用意して、実際に作図・申請書を書いてから答え合わせすること。</p>
+    <div class="card clickable" id="histEntry" style="padding:13px 14px;border:1px solid var(--accent-deep)">
+      <b style="color:var(--accent)">🔁 履歴・解き直し</b>
+      <div class="muted small">解いた問題を同じ座標・同じ当事者でもう一度。</div>
+    </div>
     <div class="card clickable" id="afEntry" style="padding:13px 14px;border:1px solid var(--accent-deep)">
       <b style="color:var(--accent)">📄 申請書様式（白紙再現）</b>
       <div class="muted small">登記の種類ごとの欄の構成を確認する。まず紙に再現してから開くこと。</div>
@@ -3512,6 +3547,64 @@ function renderWrittenList() {
   document
     .getElementById("afEntry")
     .addEventListener("click", renderAppFormList);
+  document
+    .getElementById("histEntry")
+    .addEventListener("click", () => renderHistory("written"));
+}
+
+// ─────────── 履歴・解き直し ───────────
+// 計算・記述式の履歴を新しい順に出し、タップで同じ seed の問題を再出題する。
+// kind: "calc" | "written"。filter は localStorage に覚えさせず画面内だけで持つ。
+const HISTORY_SHOW_MAX = 100;
+
+function renderHistory(kind, onlyNg) {
+  const isCalc = kind === "calc";
+  const all = Store.load().history.filter((h) => h.kind === kind);
+  const list = all.filter((h) => !onlyNg || !h.ok).slice(0, HISTORY_SHOW_MAX);
+  const nameOf = (h) => {
+    if (isCalc) return CalcGen[h.key] ? CalcGen[h.key].name : h.key;
+    const w = WRITTEN.find((x) => x.id === h.key);
+    return w ? w.title : h.key;
+  };
+  const rows = list
+    .map((h) => {
+      const idx = all.indexOf(h);
+      const result = isCalc
+        ? h.ok
+          ? "✅"
+          : "❌"
+        : `${h.ok ? "✅" : "❌"} ${h.score}/${h.total}`;
+      const mode = isCalc && h.mode === "jgd" ? "・世界測地系" : "";
+      return `<div class="card clickable" data-hi="${idx}" style="padding:11px 14px">
+        <div><b>${result}</b> ${esc(nameOf(h))}</div>
+        <div class="muted small">${esc(h.date)}${mode}・#${h.seed}${h.sec ? "・" + h.sec + "秒" : ""}</div>
+      </div>`;
+    })
+    .join("");
+  view.innerHTML = `
+    <button class="back" id="backBtn">← ${isCalc ? "計算道場メニュー" : "記述式一覧"}</button>
+    <h2 style="font-size:15px;margin:4px">🔁 履歴・解き直し（${isCalc ? "計算" : "記述式"}）</h2>
+    <p class="muted small" style="margin:0 4px 8px">タップすると、そのときと同じ数値の問題をもう一度解けます（直近${Store.HISTORY_MAX}件まで保存）。</p>
+    <div class="wfilter">
+      <button class="wf${onlyNg ? "" : " on"}" data-hf="0">すべて <b>${all.length}</b></button>
+      <button class="wf${onlyNg ? " on" : ""}" data-hf="1">❌ 間違えた <b>${all.filter((h) => !h.ok).length}</b></button>
+    </div>
+    ${rows || '<p class="muted small" style="text-align:center;margin:18px 4px">該当する履歴はまだありません。</p>'}`;
+  document
+    .getElementById("backBtn")
+    .addEventListener("click", isCalc ? renderCalcMenu : renderWrittenList);
+  view
+    .querySelectorAll("[data-hf]")
+    .forEach((b) =>
+      b.addEventListener("click", () => renderHistory(kind, b.dataset.hf === "1")),
+    );
+  view.querySelectorAll("[data-hi]").forEach((el) =>
+    el.addEventListener("click", () => {
+      const h = all[Number(el.dataset.hi)];
+      if (isCalc) renderCalcProblem(h.key, { seed: h.seed, mode: h.mode });
+      else renderWritten(h.key, { seed: h.seed });
+    }),
+  );
 }
 
 // 作図の自己採点チェックリスト。
@@ -3553,8 +3646,12 @@ function wireFigChecklist() {
 
 // 記述式1問を表示する。問題は開くたびに buildWritten() で作り直すので、
 // 同じ id でも数値・地目・当事者が毎回変わる（opts.seed を渡せば同じ問題を再現できる）。
+// 履歴上「合格圏」とみなす得点率。択一の基準点に合わせて6割とする（弱点絞り込み用）。
+const WRITTEN_PASS_RATIO = 0.6;
+
 function renderWritten(id, opts) {
   opts = opts || {};
+  let writtenLogged = false;
   const w = buildWritten(id, opts.seed || wgNewSeed());
   if (!w) {
     view.innerHTML = `<div class="card"><b>問題の生成に失敗しました。</b><p class="muted small">もう一度お試しください。</p></div>`;
@@ -3738,6 +3835,19 @@ function renderWritten(id, opts) {
     const score = calcGot + formGot + artGot;
     const total = calcMax + formMax + artMax;
     Store.recordWritten(w.id, score, total, { sec: finalSec });
+    // 履歴は1画面につき最初の採点だけ残す。seed があれば後日同じ問題を再現できる。
+    if (!writtenLogged) {
+      writtenLogged = true;
+      Store.recordHistory({
+        kind: "written",
+        key: w.id,
+        seed: w.seed,
+        score,
+        total,
+        ok: total > 0 && score / total >= WRITTEN_PASS_RATIO,
+        sec: finalSec,
+      });
+    }
     updateStreak();
     drawFigure(w.figure, 3);
     const pct = total ? Math.round((score / total) * 100) : 0;
