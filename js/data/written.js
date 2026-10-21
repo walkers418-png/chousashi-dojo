@@ -118,10 +118,29 @@ function _wBunpitsuCore(rng, o) {
   // 〔事実関係〕の測量・分筆に関する項目。事案によって前置きの項目数が変わるので、
   // 開始番号を受け取って通し番号を振る（本試験と同じ全角数字）。
   const WIDE_NUM = ["０", "１", "２", "３", "４", "５", "６", "７", "８", "９"];
-  const sokuteiNote = (start) => {
+  // 事実関係の文章部品（取得・現況・立会い・測量日など）は別の乱数から作る。
+  // 本体の乱数列を動かさないよう、ここで1回だけ種を取る。
+  const factSeed = Math.floor(rng() * 0xffffffff);
+  // 項目が増えて10以上になるため、桁ごとに全角へ直す
+  const wideNo = (k) => String(k).replace(/\d/g, (c) => WIDE_NUM[c]);
+  // 呼び出し側が後ろに独自の項目（「５　…」）を足すときの通し番号。直前の sokuteiNote の続きから振る。
+  let lastN = 0;
+  const sokuteiNote = (start, nopt) => {
+    nopt = nopt || {};
     let n = start === undefined ? 2 : start;
-    const item = (html) => `<p>${WIDE_NUM[n++]}　${html}</p>`;
-    return (
+    const item = (html) => `<p>${wideNo(n++)}　${html}</p>`;
+    // sokuteiNote は複数回呼ばれうるので、毎回同じ種から作って同じ文面にする
+    const facts = wgLandFacts(wgRng(factSeed), {
+      owner: owner,
+      shozai: shozai,
+      chimoku: chimoku,
+      date: date,
+      geo: sh.geo,
+      noUse: nopt.noUse,
+    })
+      .map(item)
+      .join("");
+    const base =
       item(
         `甲土地の筆界点は北側からＡ・Ｂ（北側筆界ＡＢ）、南側にＣ・Ｄ（南側筆界ＤＣ）であり、` +
           `${sh.geo ? "世界測地系（平面直角座標系）" : "任意座標系"}による座標値は〔測量の結果〕のとおりである。`,
@@ -137,7 +156,9 @@ function _wBunpitsuCore(rng, o) {
       item(
         `座標値・辺長は小数第${dg === 3 ? "３" : "２"}位までとし、地積は不動産登記規則第100条による。`,
       )
-    );
+    ;
+    lastN = n;
+    return facts + base;
   };
 
   // 不動産の表示（従前）
@@ -214,6 +235,8 @@ function _wBunpitsuCore(rng, o) {
     coords: coords,
     figure: figure,
     sokuteiNote: sokuteiNote,
+    nextNo: (k) => wideNo(lastN + (k || 0)),
+    noteBlock: wgNoteBlock(),
     bukkenLine: bukkenLine,
     // 交点 → 求積 → 図面に記入する辺長、の順で解かせる（本試験の作業順と同じ）
     tasks: crossTasks.concat(at.tasks, henchoTasks),
@@ -222,6 +245,72 @@ function _wBunpitsuCore(rng, o) {
       `残地（${zanchiWest ? westName : eastName}）の求積を省略していない`,
     ]),
   };
+}
+
+// 申請書の表（土地の表示・建物の表示など）の解答欄を作る共通部品。
+// 本試験の答案用紙では、表のセルごとに書き込む。cell に表と位置を持たせ、画面側（app.js の
+// SHEET_TABLES）が枠の中に配置する。採点は appForm の添字で共通なので採点処理は変わらない。
+//   _wPre  … 表の上の単独項目（所在・家屋番号など）
+//   _wCell … 表の行×列のセル
+function _wPre(table, name, answer, pts) {
+  return {
+    cell: { table: table, pre: name },
+    label: name,
+    answer: Array.isArray(answer) ? answer : [answer],
+    hint: "",
+    pts: pts || 1,
+  };
+}
+
+function _wCell(table, row, col, label, answer, pts, hint) {
+  return {
+    cell: { table: table, row: row, col: col },
+    label: label,
+    answer: Array.isArray(answer) ? answer : [answer],
+    hint: hint || "",
+    pts: pts || 1,
+  };
+}
+
+// 土地の表示の表。parcels: [{ chiban, chimoku, chiseki(数値) }]。地番は若い順に書く約束にして、
+// 行の順序で答えが割れないようにする。
+function _wTochiSheet(shozai, parcels, table) {
+  const t = table || "tochi";
+  const rows = [_wPre(t, "所在", [shozai], 1)];
+  parcels.forEach((p, r) => {
+    rows.push(
+      _wCell(t, r, "chiban", `${r + 1}行目の地番`, [p.chiban], 1, "地番の若い順に書く"),
+      _wCell(t, r, "chimoku", `${r + 1}行目の地目`, [p.chimoku], 1),
+      _wCell(
+        t,
+        r,
+        "chiseki",
+        `${r + 1}行目の地積（㎡）`,
+        wgChisekiAccepts(p.chiseki, p.chimoku),
+        2,
+        "規則100条の端数処理後の値",
+      ),
+    );
+  });
+  return rows;
+}
+
+// 地番の並べ替えキー（「27番2」→ 27002）。申請書には地番の若い順に書く。
+function _wChibanKey(text) {
+  const m = /(\d+)番(\d+)?/.exec(text);
+  return Number(m[1]) * 1000 + Number(m[2] || 0);
+}
+
+// 分筆後の2筆。分筆系テンプレートが共通で使う。
+function _wBunpitsuSheetRows(b) {
+  return _wTochiSheet(
+    b.shozai,
+    b.chiban.split.map((name) => ({
+      chiban: name,
+      chimoku: b.chimoku,
+      chiseki: name === b.westName ? b.gW : b.gE,
+    })),
+  );
 }
 
 const WRITTEN = [
@@ -241,7 +330,8 @@ const WRITTEN = [
           `<p><b>【事案】</b> ${b.owner}は、所有する下記の土地（以下「甲土地」という。）のうち一方の部分を売却するため、` +
           `${b.date.text}、土地家屋調査士${b.shiho}に分筆の登記の申請手続を依頼した。</p>` +
           b.bukkenLine +
-          b.sokuteiNote(1),
+          b.sokuteiNote(1) +
+          b.noteBlock,
         coords: b.coords,
         tasks: b.tasks,
         appForm: wgRenkenForm(
@@ -275,12 +365,7 @@ const WRITTEN = [
             hint: "分筆後の筆数×1,000円",
             pts: 2,
           },
-          {
-            label: `分筆後 ${b.westName} の地積`,
-            answer: wgChisekiAccepts(b.gW, b.chimoku),
-            hint: "不動産の表示欄に記載",
-            pts: 2,
-          },
+          ..._wBunpitsuSheetRows(b),
         ]),
         verify: b.verify,
         figure: b.figure,
@@ -317,6 +402,10 @@ const WRITTEN = [
       const zure = wgPick(rng, [-9, -7, -5, -4, 4, 5, 6, 8]);
       const toki = wgChiseki(seikai + zure, chimoku);
       return {
+        owner: owner,
+        shiho: shiho,
+        shozai: shozai,
+        chimoku: chimoku,
         statement:
           `<p><b>【事案】</b> 下記の土地（以下「乙土地」という。）について、所有権の登記名義人である${owner}から、` +
           `登記記録上の地積が実測と相違しているとして、土地家屋調査士${shiho}が地積に関する更正の登記の依頼を受けた。` +
@@ -379,6 +468,7 @@ const WRITTEN = [
             hint: "不動産種別＋「地積更正」を含める",
           },
         ]).concat([
+          ..._wTochiSheet(shozai, [{ chiban: chiban.text, chimoku: chimoku, chiseki: seikai }]),
           { label: "添付情報（図面）", answer: "地積測量図", hint: "" },
           {
             label: "登録免許税",
@@ -428,7 +518,8 @@ const WRITTEN = [
           `<p>１　${b.owner}は、その所有する下記の土地（以下「甲土地」という。）のうち一方の部分を売却するため、` +
           `${b.date.text}、土地家屋調査士${b.shiho}に分筆の登記の申請手続を依頼した。</p>` +
           b.bukkenLine +
-          b.sokuteiNote(2),
+          b.sokuteiNote(2) +
+          b.noteBlock,
         coords: b.coords,
         tasks: b.tasks,
         appForm: wgRenkenForm(1, [
@@ -456,18 +547,7 @@ const WRITTEN = [
             hint: "分筆後の筆数×1,000円",
             pts: 2,
           },
-          {
-            label: `分筆後 ${b.westName} の地積`,
-            answer: wgChisekiAccepts(b.gW, b.chimoku),
-            hint: "不動産の表示欄",
-            pts: 2,
-          },
-          {
-            label: `分筆後 ${b.eastName} の地積`,
-            answer: wgChisekiAccepts(b.gE, b.chimoku),
-            hint: "不動産の表示欄",
-            pts: 2,
-          },
+          ..._wBunpitsuSheetRows(b),
         ]),
         verify: b.verify,
         figure: b.figure,
@@ -500,7 +580,8 @@ const WRITTEN = [
           `<p><b>【事案】</b> ${b.owner}は、所有する下記の土地（以下「甲土地」という。）の分筆の登記を土地家屋調査士${b.shiho}に依頼した。</p>` +
           b.bukkenLine +
           b.sokuteiNote(1) +
-          `<p>５　分筆線ＰＱの<b>方向角</b>（北を0度とし時計回りに測った角）も求めること。</p>`,
+          `<p>${b.nextNo()}　分筆線ＰＱの<b>方向角</b>（北を0度とし時計回りに測った角）も求めること。</p>` +
+          b.noteBlock,
         coords: b.coords,
         tasks: b.tasks.concat([
           {
@@ -517,6 +598,7 @@ const WRITTEN = [
         ]),
         appForm: wgRenkenForm(1, [{ answer: "土地分筆登記", hint: "" }]).concat(
           [
+          ..._wBunpitsuSheetRows(b),
             {
               label: "添付情報（図面）",
               answer: "地積測量図",
@@ -563,11 +645,13 @@ const WRITTEN = [
           `<p>１　${b.owner}は、その所有する下記の土地（以下「甲土地」という。）の一部を分筆するため、土地家屋調査士${b.shiho}に分筆の登記の申請手続を依頼した。</p>` +
           b.bukkenLine +
           b.sokuteiNote(2) +
-          `<p class="small">※ 地目が<b>${b.chimoku}</b>であることに注意して地積の端数処理を判断せよ。</p>`,
+          `<p class="small">※ 地目が<b>${b.chimoku}</b>であることに注意して地積の端数処理を判断せよ。</p>` +
+          b.noteBlock,
         coords: b.coords,
         tasks: b.tasks,
         appForm: wgRenkenForm(1, [{ answer: "土地分筆登記", hint: "" }]).concat(
           [
+          ..._wBunpitsuSheetRows(b),
             {
               label: "登記原因及びその日付",
               answer: ["記載しない", "記載を要しない", "なし"],
@@ -617,6 +701,10 @@ const WRITTEN = [
       const gOtsu = wgChiseki(sh.areaOtsu, chimoku);
       const tax = wgGappitsuTax(1);
       return {
+        owner: owner,
+        shiho: shiho,
+        shozai: shozai,
+        chimoku: chimoku,
         statement:
           `<p><b>【事案】</b> ${owner}は、相互に<b>接続する</b>2筆の土地を1筆にまとめたいと考え、土地家屋調査士${shiho}に合筆の登記を依頼した。` +
           `2筆はいずれも<b>地目 ${chimoku}</b>、所有権登記名義人はいずれも${owner}であり、<b>所有権以外の権利に関する登記はない</b>。字も同一である。</p>` +
@@ -661,12 +749,7 @@ const WRITTEN = [
         appForm: wgRenkenForm(1, [
           { answer: "土地合筆登記", hint: "不動産種別から書く" },
         ]).concat([
-          {
-            label: "合筆後の地番",
-            answer: [n1 + "番", String(n1)],
-            hint: "合筆前の首位（若い）地番を用いる",
-            pts: 2,
-          },
+          ..._wTochiSheet(shozai, [{ chiban: n1 + "番", chimoku: chimoku, chiseki: +(gKou + gOtsu).toFixed(2) }]),
           {
             label: "添付情報（図面）",
             answer: ["なし", "不要", "提供を要しない"],
@@ -749,6 +832,10 @@ const WRITTEN = [
       // 宅地だった場合の地積（端数処理の違いを解説で対比させる）
       const asTakuchi = wgChiseki(area, "宅地");
       return {
+        owner: owner,
+        shiho: shiho,
+        shozai: shozai,
+        chimoku: chimoku,
         statement:
           `<p><b>【事案】</b> 下記の土地（以下「丙土地」という。）について、所有権登記名義人${owner}から、` +
           `登記地積が実測と相違しているとして、土地家屋調査士${shiho}が地積更正の登記の依頼を受けた。` +
@@ -803,6 +890,7 @@ const WRITTEN = [
         appForm: wgRenkenForm(1, [
           { answer: "土地地積更正登記", hint: "「地積更正」を含める" },
         ]).concat([
+          ..._wTochiSheet(shozai, [{ chiban: chiban.text, chimoku: chimoku, chiseki: seikai }]),
           { label: "添付情報（図面）", answer: "地積測量図", hint: "" },
           {
             label: "登録免許税",
@@ -889,6 +977,10 @@ const WRITTEN = [
       ]);
       const tax = wgGappitsuTax(1);
       return {
+        owner: owner,
+        shiho: shiho,
+        shozai: shozai,
+        chimoku: chimoku,
         statement:
           `<p><b>【事案】</b> ${owner}は、下記の3筆の土地をできる限り1筆にまとめたいと考え、土地家屋調査士${shiho}に相談した。</p>` +
           `<p class="small">甲土地: 所在 ${shozai}／地番 <b>${n1}番</b>／地目 ${chimoku}／所有権登記名義人 ${owner}<br>` +
@@ -930,12 +1022,13 @@ const WRITTEN = [
               hint: "法41条の合筆制限のうちどれか（キーワードで）",
               pts: 4,
             },
-            {
-              label: "合筆後の地番",
-              answer: [n1 + "番", String(n1)],
-              hint: "合筆前の首位の地番",
-              pts: 2,
-            },
+            ..._wTochiSheet(shozai, [
+              {
+                chiban: n1 + "番",
+                chimoku: chimoku,
+                chiseki: +(gKou + gOtsu).toFixed(2),
+              },
+            ]),
             {
               label: "登録免許税",
               answer: wgYenAccepts(tax),
@@ -1001,7 +1094,8 @@ const WRITTEN = [
           `／地　積　<b>${wgChisekiText(tokiChiseki, b.chimoku)}㎡</b>（登記記録）／所有権登記名義人　${b.owner}</p>` +
           `<p>２　測量の結果、甲土地の実測地積は<b>登記記録上の地積と相違していた</b>ため、${b.owner}は、` +
           `<b>地積に関する更正の登記を併せて申請すること</b>を希望している（登記官の許可を得て一の申請情報によるものとする）。</p>` +
-          b.sokuteiNote(3),
+          b.sokuteiNote(3) +
+          b.noteBlock,
         coords: b.coords,
         tasks: b.tasks.concat([
           {
@@ -1058,12 +1152,7 @@ const WRITTEN = [
             answer: ["所有権登記名義人", "所有権の登記名義人"],
             hint: "法39条1項",
           },
-          {
-            label: `分筆後 ${b.westName} の地積`,
-            answer: wgChisekiAccepts(b.gW, b.chimoku),
-            hint: "不動産の表示欄",
-            pts: 2,
-          },
+          ..._wBunpitsuSheetRows(b),
         ]),
         // 登記地積は実測と食い違わせてある（更正が必要な状況そのものが出題の核）
         verify: Object.assign({}, b.verify, {
@@ -1084,6 +1173,19 @@ const WRITTEN = [
     title: "土地一部地目変更・分筆登記（申請義務あり）",
     target: "目標60分",
     combo: ["一部地目変更", "分筆"],
+    sheet: [
+      {
+        build: (b) =>
+          _wTochiSheet(
+            b.shozai,
+            b.chibanSplit.map((n) => ({
+              chiban: n,
+              chimoku: n === b.changedName ? b.chgTo : b.chgFrom,
+              chiseki: n === b.changedName ? b.gChanged : b.gKept,
+            })),
+          ),
+      },
+    ],
     build(rng) {
       const chg = wgPick(rng, WG_CHIMOKU_CHANGE);
       const b = _wBunpitsuCore(rng, {
@@ -1103,6 +1205,13 @@ const WRITTEN = [
       const total = +(gChanged + gKept).toFixed(2);
       const tax = wgBunpitsuTax(2);
       return {
+        shozai: b.shozai,
+        chibanSplit: b.chiban.split,
+        chgTo: chg.to,
+        chgFrom: chg.from,
+        changedName: changedName,
+        gChanged: gChanged,
+        gKept: gKept,
         statement:
           `<p><b>第１問</b>　次の〔事実関係〕及び〔測量の結果〕に基づき、土地家屋調査士${b.shiho}が申請すべき登記の申請情報の内容等を答えよ。</p>` +
           `<p><b>〔事実関係〕</b></p>` +
@@ -1112,9 +1221,10 @@ const WRITTEN = [
           `<p class="small">所　在　${b.shozai}／地　番　${b.chiban.text}／地　目　<b>${chg.from}</b>` +
           `／地　積　<b>${wgChisekiText(total, chg.from)}㎡</b>（登記記録）／所有権登記名義人　${b.owner}</p>` +
           `<p>２　一筆の土地に2種類以上の地目は認められない（一筆一地目主義・規則99条）。</p>` +
-          b.sokuteiNote(3) +
-          `<p>７　地目が変更した部分（${changedName}）の地積は<b>変更後の地目 ${chg.to}</b>を前提に、` +
-          `残る部分（${keptName}）は<b>${chg.from}</b>を前提に端数処理せよ。</p>`,
+          b.sokuteiNote(3, { noUse: true }) +
+          `<p>${b.nextNo()}　地目が変更した部分（${changedName}）の地積は<b>変更後の地目 ${chg.to}</b>を前提に、` +
+          `残る部分（${keptName}）は<b>${chg.from}</b>を前提に端数処理せよ。</p>` +
+          b.noteBlock,
         coords: b.coords,
         tasks: wgCrossTasks(b.sh, b.dg).concat([
           {
@@ -1253,6 +1363,18 @@ const WRITTEN = [
     title: "土地分合筆登記（一部を分筆して他の土地に合筆）",
     target: "目標60分",
     combo: ["分筆", "合筆"],
+    sheet: [
+      {
+        build: (b) =>
+          _wTochiSheet(
+            b.shozai,
+            [
+              { chiban: b.chibanZan, chimoku: b.chimoku, chiseki: b.gZan },
+              { chiban: b.otsuNo, chimoku: b.chimoku, chiseki: b.gappitsuGo },
+            ].sort((x, y) => _wChibanKey(x.chiban) - _wChibanKey(y.chiban)),
+          ),
+      },
+    ],
     build(rng) {
       const b = _wBunpitsuCore(rng, {
         mode: rng() < 0.5 ? "real" : "clean",
@@ -1272,6 +1394,15 @@ const WRITTEN = [
       // 登免税: 分筆後の土地1個＋合筆後の土地1個＝2個
       const tax = 2000;
       return {
+        chibanZan: b.chiban.split[0],
+        otsuNo: otsuNo,
+        gZan: gZan,
+        gappitsuGo: gappitsuGo,
+        owner: b.owner,
+        shiho: b.shiho,
+        shozai: b.shozai,
+        date: b.date,
+        chimoku: b.chimoku,
         statement:
           `<p><b>第１問</b>　次の〔事実関係〕及び〔測量の結果〕に基づき、土地家屋調査士${b.shiho}が申請すべき登記の申請情報の内容等を答えよ。</p>` +
           `<p><b>〔事実関係〕</b></p>` +
@@ -1352,12 +1483,6 @@ const WRITTEN = [
             pts: 4,
           },
           {
-            label: "合筆後の土地の地番",
-            answer: [otsuNo, otsuNo.replace("番", "")],
-            hint: "合筆先である乙土地の地番",
-            pts: 2,
-          },
-          {
             label: "添付情報（図面）",
             answer: "地積測量図",
             hint: "分筆を伴うので必要",
@@ -1394,6 +1519,27 @@ const WRITTEN = [
     title: "土地地積更正・合筆登記＋土地分筆登記（2件連件）",
     target: "目標70分",
     combo: ["地積更正", "合筆", "分筆"],
+    sheet: [
+      {
+        build: (b) =>
+          _wTochiSheet(
+            b.shozai,
+            [{ chiban: b.n1 + "番", chimoku: b.chimoku, chiseki: b.gappitsuGo }],
+            "tochi1",
+          ),
+      },
+      {
+        build: (b) =>
+          _wTochiSheet(
+            b.shozai,
+            [
+              { chiban: b.n1 + "番1", chimoku: b.chimoku, chiseki: b.gN },
+              { chiban: b.n1 + "番2", chimoku: b.chimoku, chiseki: b.gS },
+            ],
+            "tochi2",
+          ),
+      },
+    ],
     build(rng) {
       const chimoku = wgPick(rng, WG_CHIMOKU_FINE.concat(WG_CHIMOKU_COARSE));
       const owner = wgPerson(rng);
@@ -1423,6 +1569,15 @@ const WRITTEN = [
       const taxBunpitsu = wgBunpitsuTax(2);
 
       return {
+        n1: n1,
+        gappitsuGo: gappitsuGo,
+        gN: gN,
+        gS: gS,
+        owner: owner,
+        shiho: shiho,
+        shozai: shozai,
+        date: date,
+        chimoku: chimoku,
         title: "土地地積更正・合筆登記＋土地分筆登記（2件連件）",
         statement:
           `<p><b>第１問</b>　次の〔事実関係〕及び〔測量の結果〕に基づき、土地家屋調査士${shiho}が申請すべき登記の申請情報の内容等を答えよ。</p>` +
@@ -1516,12 +1671,6 @@ const WRITTEN = [
             pts: 4,
           },
           {
-            label: "合筆後の地番",
-            answer: [n1 + "番", String(n1)],
-            hint: "合筆前の首位の地番",
-            pts: 2,
-          },
-          {
             label: "1件目（地積更正・合筆）の登録免許税",
             answer: wgYenAccepts(taxGappitsu),
             hint: "更正は非課税。合筆後の筆数×1,000円",
@@ -1585,6 +1734,12 @@ const WRITTEN = [
     type: "建物",
     title: "建物表題登記（床面積の認定・吹抜け）",
     target: "目標40分",
+    sheet: [
+      { match: /^種類$/, cell: { table: "tatemono", row: 0, col: "shurui" } },
+      { match: /^構造$/, cell: { table: "tatemono", row: 0, col: "kozo" } },
+      { cell: { table: "tatemono", pre: "所在" }, label: "所在", pts: 1, value: (b) => [b.shozai + b.chiban] },
+      { cell: { table: "tatemono", row: 0, col: "yuka" }, label: "床面積（各階）", pts: 3, value: (b) => wgFloorsAccepts([b.tasks[0].answer, b.tasks[1].answer]) },
+    ],
     build(rng) {
       const owner = wgPerson(rng);
       const shiho = wgPerson(rng);
@@ -1605,6 +1760,11 @@ const WRITTEN = [
       const a2 = _wYuka(a2raw - fa * fb);
       const nobe = _wYuka(a1 + a2);
       return {
+        chiban: chiban,
+        owner: owner,
+        shiho: shiho,
+        shozai: shozai,
+        date: date,
         statement:
           `<p><b>【事案】</b> ${owner}は、${shozai}${chiban}の土地上に建物を新築し、<b>${date.text}</b>に完成と同時に引渡しを受けた。` +
           `${owner}は土地家屋調査士${shiho}に登記の申請手続を依頼した。建物の概要は次のとおりである。</p>` +
@@ -1719,6 +1879,9 @@ const WRITTEN = [
     type: "建物",
     title: "建物表題部変更登記（増築・床面積の変更）",
     target: "目標30分",
+    sheet: [
+      { cell: { table: "tatemono", row: 0, col: "yuka" }, label: "床面積（増築後・各階）", pts: 3, value: (b) => wgFloorsAccepts([b.tasks[1].answer, +(b.tasks[2].answer - b.tasks[1].answer).toFixed(2)]) },
+    ],
     build(rng) {
       const owner = wgPerson(rng);
       const shiho = wgPerson(rng);
@@ -1736,6 +1899,9 @@ const WRITTEN = [
       const a1new = _wYuka(a1 + za);
       const nobe = _wYuka(a1new + a2);
       return {
+        owner: owner,
+        shiho: shiho,
+        date: date,
         statement:
           `<p><b>【事案】</b> ${owner}は、所有する${shu.name}（<b>${st.text}</b>、1階 ${a1.toFixed(2)}㎡・2階 ${a2.toFixed(2)}㎡）の` +
           `<b>1階部分に増築工事</b>を行い、<b>${date.text}</b>に工事が完了した。${owner}は土地家屋調査士${shiho}に登記の申請手続を依頼した。</p>` +
@@ -1838,6 +2004,14 @@ const WRITTEN = [
     type: "建物",
     title: "建物分割登記（附属建物を独立の建物に）",
     target: "目標30分",
+    sheet: [
+      { cell: { table: "tatemono", row: 0, col: "shurui" }, label: "分割後の主たる建物の種類", pts: 1, value: (b) => [b.shuName] },
+      { cell: { table: "tatemono", row: 0, col: "kozo" }, label: "分割後の主たる建物の構造", pts: 1, value: (b) => [b.stText] },
+      { cell: { table: "tatemono", row: 0, col: "yuka" }, label: "分割後の主たる建物の床面積", pts: 2, task: 0 },
+      { cell: { table: "tatemono", row: 1, col: "shurui" }, label: "分割で独立する建物の種類", pts: 1, value: (b) => [b.fuName] },
+      { cell: { table: "tatemono", row: 1, col: "kozo" }, label: "分割で独立する建物の構造", pts: 1, value: (b) => [b.stText] },
+      { cell: { table: "tatemono", row: 1, col: "yuka" }, label: "分割で独立する建物の床面積", pts: 2, task: 1 },
+    ],
     build(rng) {
       const owner = wgPerson(rng);
       const shiho = wgPerson(rng);
@@ -1851,6 +2025,11 @@ const WRITTEN = [
       const ma = _wYuka(md * mw);
       const fa = _wYuka(fd * fw);
       return {
+        shuName: shu.name,
+        fuName: fu,
+        stText: st.text,
+        owner: owner,
+        shiho: shiho,
         statement:
           `<p><b>【事案】</b> ${owner}が所有する登記済みの建物は、<b>主たる建物（${shu.name}）</b>と<b>附属建物（${fu}）</b>から成る。` +
           `${owner}は、附属建物を主たる建物から切り離して<b>別個独立の一個の建物</b>としたいと考え、土地家屋調査士${shiho}に登記の申請手続を依頼した。各寸法は壁芯による。</p>` +
@@ -1943,6 +2122,11 @@ const WRITTEN = [
     type: "建物",
     title: "建物滅失登記（取壊し）",
     target: "目標25分",
+    sheet: [
+      { cell: { table: "tatemono", row: 0, col: "shurui" }, label: "取り壊した建物の種類", pts: 1, value: (b) => [b.shuName] },
+      { cell: { table: "tatemono", row: 0, col: "kozo" }, label: "取り壊した建物の構造", pts: 1, value: (b) => [b.stText] },
+      { cell: { table: "tatemono", row: 0, col: "yuka" }, label: "取り壊した建物の床面積（各階）", pts: 3, value: (b) => wgFloorsAccepts([b.tasks[0].answer, b.tasks[0].answer]) },
+    ],
     build(rng) {
       const owner = wgPerson(rng);
       const shiho = wgPerson(rng);
@@ -1954,7 +2138,12 @@ const WRITTEN = [
       const a1 = _wYuka(d1 * w1);
       const nobe = _wYuka(a1 * 2);
       return {
+        shuName: shu.name,
+        stText: st.text,
         // 滅失の登記は図面を要しないので作図チェックは出さない（規則上の添付図面なし）
+        owner: owner,
+        shiho: shiho,
+        date: date,
         figureChecks: [],
         statement:
           `<p><b>【事案】</b> ${owner}が所有する登記済みの建物（<b>${st.text}${shu.name}</b>、1階・2階とも 奥行 ${d1.toFixed(2)}m × 間口 ${w1.toFixed(2)}m）を取り壊し、` +
@@ -2038,6 +2227,9 @@ const WRITTEN = [
     title: "建物表題部変更・建物分割登記（一の申請情報）",
     target: "目標45分",
     combo: ["表題部変更", "分割"],
+    sheet: [
+      { cell: { table: "tatemono", row: 0, col: "yuka" }, label: "床面積（増築後の主たる建物）", pts: 3, value: (b) => wgAreaAccepts(b.maNew) },
+    ],
     build(rng) {
       const owner = wgPerson(rng);
       const shiho = wgPerson(rng);
@@ -2056,6 +2248,10 @@ const WRITTEN = [
       const maNew = _wYuka(ma + za);
       const fa = _wYuka(fd * fw);
       return {
+        maNew: maNew,
+        owner: owner,
+        shiho: shiho,
+        date: date,
         statement:
           `<p><b>【事案】</b> ${owner}が所有する登記済みの建物は、主たる建物（<b>${shu.name}</b>・${st.text}・${ma.toFixed(2)}㎡）と` +
           `附属建物（<b>${fu}</b>・${fa.toFixed(2)}㎡）から成る。${owner}は次の2つを希望し、${date.text}、土地家屋調査士${shiho}に依頼した。</p>` +
@@ -2173,6 +2369,12 @@ const WRITTEN = [
     type: "区分建物",
     title: "区分建物表題登記（内法計算・敷地権）",
     target: "目標45分",
+    sheet: [
+      { match: /^一棟の建物の構造/, cell: { table: "ittou", row: 0, col: "kozo" } },
+      { match: /^敷地権の種類/, cell: { table: "shikichi", row: 0, col: "shurui" } },
+      { cell: { table: "ittou", row: 0, col: "yuka" }, label: "一棟の建物の床面積（各階）", pts: 3, value: (b) => wgFloorsAccepts(Array(b.kai).fill(b.tasks[0].answer)) },
+      { cell: { table: "kubunTatemono", row: 0, col: "yuka" }, label: "区分した建物 1行目の床面積", task: 1, pts: 2 },
+    ],
     build(rng) {
       const corp = wgPick(rng, ["株式会社", "有限会社"]) + wgPerson(rng);
       const shiho = wgPerson(rng);
@@ -2189,6 +2391,9 @@ const WRITTEN = [
       const uchinori = _wYuka((sd - t) * (sw - t));
       const kabeshin = _wYuka(sd * sw);
       return {
+        kai: kai,
+        shiho: shiho,
+        shozai: shozai,
         statement:
           `<p><b>【事案】</b> ${corp}は、所有する${shozai}の土地（所有権・更地）上に、<b>${st.text}</b>の共同住宅を新築した。` +
           `各階に専有部分${perFloor}戸（計${kai * perFloor}戸）があり、各専有部分は構造上・利用上の独立性を備える。` +
@@ -2282,6 +2487,12 @@ const WRITTEN = [
     type: "区分建物",
     title: "区分建物表題登記（内法計算と敷地権の割合）",
     target: "目標45分",
+    sheet: [
+      { match: /^敷地権の割合/, cell: { table: "shikichi", row: 0, col: "wariai" } },
+      { match: /^敷地権の種類/, cell: { table: "shikichi", row: 0, col: "shurui" } },
+      { cell: { table: "kubunTatemono", row: 0, col: "yuka" }, label: "区分した建物 1行目の床面積", task: 0, pts: 2 },
+      { cell: { table: "kubunTatemono", row: 1, col: "yuka" }, label: "区分した建物 2行目の床面積", task: 1, pts: 2 },
+    ],
     build(rng) {
       const corp = wgPick(rng, ["株式会社", "有限会社"]) + wgPerson(rng);
       const shiho = wgPerson(rng);
@@ -2303,6 +2514,7 @@ const WRITTEN = [
         den = cs / g;
       const pct = +((a1 / sum) * 100).toFixed(4);
       return {
+        shiho: shiho,
         statement:
           `<p><b>【事案】</b> ${corp}は、所有地（更地・所有権）上に<b>${st.text}</b>の共同住宅を新築した。` +
           `各階に専有部分1戸（<b>101号・102号の計2戸</b>）があり、いずれも構造上・利用上の独立性を備える。` +
@@ -2403,6 +2615,10 @@ const WRITTEN = [
     type: "区分建物",
     title: "建物区分登記（一個の建物を区分して区分建物に）",
     target: "目標35分",
+    sheet: [
+      { cell: { table: "kubunTatemono", row: 0, col: "yuka" }, label: "区分した建物 1行目の床面積", task: 1, pts: 2 },
+      { cell: { table: "kubunTatemono", row: 1, col: "yuka" }, label: "区分した建物 2行目の床面積", task: 2, pts: 2 },
+    ],
     build(rng) {
       const owner = wgPerson(rng);
       const shiho = wgPerson(rng);
@@ -2416,6 +2632,8 @@ const WRITTEN = [
       const uchinori = _wYuka((sd - t) * (sw - t));
       const kabeshin = _wYuka(sd * sw);
       return {
+        owner: owner,
+        shiho: shiho,
         statement:
           `<p><b>【事案】</b> ${owner}が所有する登記済みの建物（<b>${st.text}</b>の共同住宅）は、各階が構造上・利用上独立している。` +
           `${owner}は、これを<b>各階ごとの専有部分（101号・102号の2戸）に区分する登記</b>を申請したいと考え、土地家屋調査士${shiho}に依頼した。各寸法は壁芯による。</p>` +
@@ -2516,6 +2734,10 @@ const WRITTEN = [
     type: "区分建物",
     title: "区分建物の区分合併登記（内法・敷地権の割合の合算）",
     target: "目標45分",
+    sheet: [
+      { match: /^合併後の敷地権の割合/, cell: { table: "shikichi", row: 0, col: "wariai" } },
+      { cell: { table: "kubunTatemono", row: 0, col: "yuka" }, label: "区分した建物 1行目の床面積", task: 1, pts: 2 },
+    ],
     build(rng) {
       const owner = wgPerson(rng);
       const shiho = wgPerson(rng);
@@ -2550,6 +2772,10 @@ const WRITTEN = [
       const fMerged = rawFrac(n1 + n2);
 
       return {
+        owner: owner,
+        shiho: shiho,
+        shozai: shozai,
+        date: date,
         statement:
           `<p><b>【事案】</b> ${shozai}に所在する一棟の建物（家屋番号 ${base}番の1から${base}番の8まで）のうち、` +
           `${owner}が所有する<b>${base}番の1</b>と<b>${base}番の2</b>は互いに接続している。` +
@@ -2700,6 +2926,12 @@ const WRITTEN = [
     type: "建物",
     title: "建物合併登記（56条の合併制限で合併できない建物を見抜く）",
     target: "目標40分",
+    sheet: [
+      { cell: { table: "tatemono", row: 0, col: "kozo" }, label: "合併後の主である建物（甲）の構造", pts: 1, value: (b) => [b.stText] },
+      { cell: { table: "tatemono", row: 0, col: "yuka" }, label: "合併後の主である建物（甲）の床面積", pts: 2, value: (b) => wgAreaAccepts(+(b.tasks[1].answer - b.tasks[0].answer).toFixed(2)) },
+      { cell: { table: "tatemono", row: 1, col: "kozo" }, label: "合併後の附属建物（乙）の構造", pts: 1, value: (b) => [b.stText] },
+      { cell: { table: "tatemono", row: 1, col: "yuka" }, label: "合併後の附属建物（乙）の床面積", pts: 2, task: 0 },
+    ],
     build(rng) {
       const owner = wgPerson(rng);
       const other = wgPerson(rng);
@@ -2745,6 +2977,11 @@ const WRITTEN = [
       const merged = _wYuka(kou.a + otsu.a);
 
       return {
+        stText: st.text,
+        owner: owner,
+        shiho: shiho,
+        shozai: shozai,
+        date: date,
         statement:
           `<p><b>【事案】</b> ${shozai}に所在する次の3個の建物は、いずれも${st.text}で、互いに接続している。` +
           `${owner}は、これらをできる限り1個の建物にまとめたいと考え、${date.text}、土地家屋調査士${shiho}に相談した。</p>` +
@@ -2899,6 +3136,10 @@ const WRITTEN = [
       const pts = [sh.A, sh.B, sh.C, sh.D];
 
       return {
+        owner: owner,
+        shiho: shiho,
+        shozai: shozai,
+        chimoku: chimoku,
         statement:
           `<p><b>【事案】</b> ${owner}は、公有水面埋立法の規定により<b>${dMenkyo.text}</b>に埋立ての免許を受け、` +
           `埋立工事を完了した。その後、<b>${dKokuji.text}</b>に竣功認可の告示がされた。</p>` +
@@ -2950,6 +3191,7 @@ const WRITTEN = [
           ],
           "表題登記のみなので一の申請情報",
         ).concat([
+          ..._wTochiSheet(shozai, [{ chiban: chiban.text, chimoku: chimoku, chiseki: gChiseki }]),
           {
             label: "登記原因及びその日付",
             answer: [
@@ -3054,6 +3296,11 @@ const WRITTEN = [
     title: "建物合体による登記等（床面積・持分・所有権の登記）",
     target: "目標50分",
     combo: ["合体", "所有権保存"],
+    sheet: [
+      { cell: { table: "tatemono", pre: "所在" }, label: "所在", pts: 1, value: (b) => [b.shozai + b.chiban.text] },
+      { cell: { table: "tatemono", row: 0, col: "kozo" }, label: "構造（合体後）", pts: 2, value: (b) => [b.stText] },
+      { cell: { table: "tatemono", row: 0, col: "yuka" }, label: "床面積（合体後）", pts: 3, value: (b) => wgAreaAccepts(b.areaTotal) },
+    ],
     build(rng) {
       const ownerA = wgPerson(rng);
       const ownerB = wgPerson(rng);
@@ -3097,6 +3344,11 @@ const WRITTEN = [
       const dGattai = dayKey(d1) < dayKey(d2) ? d2 : d1;
 
       return {
+        chiban: chiban,
+        stText: st.text,
+        areaTotal: areaTotal,
+        shiho: shiho,
+        shozai: shozai,
         statement:
           `<p><b>【事案】</b> ${shozai}${chiban.text}の土地の上に、次の2個の建物が別々に登記されていた。` +
           `${dGattai.text}、両建物の間に接続部分を増築する工事が完了し、構造上1個の建物となった。</p>` +
@@ -3326,10 +3578,11 @@ const WRITTEN = [
           `<p class="small">所　在　${b.shozai}／地　番　${b.chiban.text}／地　目　<b>${b.chimoku}</b>` +
           `／地　積　<b>${wgChisekiText(tokiChiseki, b.chimoku)}㎡</b>（登記記録）／所有権登記名義人　${b.owner}</p>` +
           b.sokuteiNote(1) +
-          `<p>５　甲土地の存する地域は<b>${chiiki.name}</b>であり、地積測定の公差は、` +
+          `<p>${b.nextNo()}　甲土地の存する地域は<b>${chiiki.name}</b>であり、地積測定の公差は、` +
           `国土調査法施行令別表第四に掲げる精度区分<b>${chiiki.seido}</b>として ` +
           `<b>${kosa.toFixed(2)}㎡</b> である。</p>` +
-          `<p>６　求積値と登記記録の地積との差が<b>公差の範囲内であるときは、地積に関する更正の登記は申請しない</b>ものとする。</p>`,
+          `<p>${b.nextNo(1)}　求積値と登記記録の地積との差が<b>公差の範囲内であるときは、地積に関する更正の登記は申請しない</b>ものとする。</p>` +
+          b.noteBlock,
         coords: b.coords,
         tasks: b.tasks.concat([
           {
@@ -3350,6 +3603,7 @@ const WRITTEN = [
           [{ answer: mokuteki, hint: "公差の判断の結果によって変わる" }],
           "一の申請情報による",
         ).concat([
+          ..._wBunpitsuSheetRows(b),
           {
             label: "地積に関する更正の登記の要否（「必要」か「不要」で答える）",
             answer: needsKousei
@@ -3399,6 +3653,9 @@ const WRITTEN = [
     type: "区分建物",
     title: "共用部分である旨の登記（規約共用部分・内法計算）",
     target: "目標35分",
+    sheet: [
+      { cell: { table: "kubunTatemono", row: 0, col: "yuka" }, label: "区分した建物 1行目の床面積", task: 0, pts: 2 },
+    ],
     build(rng) {
       const owner = wgPerson(rng);
       const shiho = wgPerson(rng);
@@ -3423,6 +3680,10 @@ const WRITTEN = [
       const heya = wgPick(rng, ["101", "102", "103", "201"]);
 
       return {
+        owner: owner,
+        shiho: shiho,
+        shozai: shozai,
+        date: date,
         statement:
           `<p><b>【事案】</b> ${shozai}に所在する<b>${kai}階建て・各階${perFloor}戸</b>の区分建物（マンション）がある。` +
           `このうち<b>${heya}号室</b>は、当初から<b>${yoto.name}</b>として${yoto.use}に供されており、構造上・利用上の独立性を備えているため<b>専有部分として登記されている</b>。</p>` +
@@ -3514,6 +3775,21 @@ const WRITTEN = [
     type: "区分建物",
     title: "規約敷地を含む敷地権（法定敷地＋規約敷地・割合計算）",
     target: "目標45分",
+    sheet: [
+      { match: /^敷地権の種類/, cell: { table: "shikichi", row: 0, col: "shurui" } },
+      { match: /^101号の敷地権の割合/, cell: { table: "shikichi", row: 0, col: "wariai" } },
+      { cell: { table: "kubunTatemono", row: 0, col: "yuka" }, label: "区分した建物 1行目の床面積", task: 0, pts: 2 },
+      { cell: { table: "kubunTatemono", row: 1, col: "yuka" }, label: "区分した建物 2行目の床面積", task: 1, pts: 2 },
+      { cell: { table: "kubunTatemono", row: 2, col: "yuka" }, label: "区分した建物 3行目の床面積", task: 2, pts: 2 },
+      { cell: { table: "kubunTochi", row: 0, col: "fugo" }, label: "敷地権の目的である土地 1行目の符号", pts: 1, value: () => ["1"] },
+      { cell: { table: "kubunTochi", row: 0, col: "chiban" }, label: "敷地権の目的である土地 1行目の所在及び地番", pts: 2, value: (b) => [b.shozai + b.chiban1.text, b.chiban1.text] },
+      { cell: { table: "kubunTochi", row: 0, col: "chimoku" }, label: "敷地権の目的である土地 1行目の地目", pts: 1, value: () => ["宅地"] },
+      { cell: { table: "kubunTochi", row: 0, col: "chiseki" }, label: "敷地権の目的である土地 1行目の地積（㎡）", pts: 2, value: (b) => wgChisekiAccepts(b.area1, "宅地") },
+      { cell: { table: "kubunTochi", row: 1, col: "fugo" }, label: "敷地権の目的である土地 2行目の符号", pts: 1, value: () => ["2"] },
+      { cell: { table: "kubunTochi", row: 1, col: "chiban" }, label: "敷地権の目的である土地 2行目の所在及び地番", pts: 2, value: (b) => [b.shozai + b.chiban2.text, b.chiban2.text] },
+      { cell: { table: "kubunTochi", row: 1, col: "chimoku" }, label: "敷地権の目的である土地 2行目の地目", pts: 1, value: () => ["宅地"] },
+      { cell: { table: "kubunTochi", row: 1, col: "chiseki" }, label: "敷地権の目的である土地 2行目の地積（㎡）", pts: 2, value: (b) => wgChisekiAccepts(b.area2, "宅地") },
+    ],
     build(rng) {
       const corp = wgPick(rng, ["株式会社", "有限会社"]) + wgPerson(rng);
       const shiho = wgPerson(rng);
@@ -3552,6 +3828,13 @@ const WRITTEN = [
       const num = Math.round(rooms[0].area * 100);
 
       return {
+        chiban1: chiban1,
+        chiban2: chiban2,
+        area1: area1,
+        area2: area2,
+        shiho: shiho,
+        shozai: shozai,
+        date: date,
         statement:
           `<p><b>【事案】</b> ${corp}は、${shozai}<b>${chiban1.text}</b>の土地（地目 宅地・地積 ${area1.toFixed(2)}㎡・所有権）の上に、` +
           `<b>${st.text}</b>の共同住宅を新築した。専有部分は<b>3戸</b>で、いずれも構造上・利用上の独立性を備える。</p>` +
@@ -3657,6 +3940,9 @@ const WRITTEN = [
     title: "区分建物の滅失＋区分建物でない建物とする変更（内法→壁芯）",
     target: "目標40分",
     combo: ["滅失", "表題部変更"],
+    sheet: [
+      { cell: { table: "tatemono", row: 0, col: "yuka" }, label: "床面積（区分建物でない建物となった後）", pts: 3, value: (b) => wgAreaAccepts(b.tasks[2].answer) },
+    ],
     build(rng) {
       const owner = wgPerson(rng);
       const shiho = wgPerson(rng);
@@ -3675,6 +3961,10 @@ const WRITTEN = [
       if (kKabe - kUchi < 2) return null;
 
       return {
+        owner: owner,
+        shiho: shiho,
+        shozai: shozai,
+        date: date,
         statement:
           `<p><b>【事案】</b> ${shozai}に所在する一棟の建物は、<b>甲区分建物と乙区分建物の2個の区分建物のみ</b>で構成されており、` +
           `いずれも${owner}が所有権の登記名義人である。</p>` +
@@ -3785,6 +4075,12 @@ const WRITTEN = [
     title:
       "分離処分可能規約がある区分建物の表題登記（割合の合計が1にならない）",
     target: "目標50分",
+    sheet: [
+      { matchAll: /^\d+号の敷地権の割合/, table: "shikichi", col: "wariai" },
+      { cell: { table: "kubunTatemono", row: 0, col: "yuka" }, label: "区分した建物 1行目の床面積", task: 0, pts: 2 },
+      { cell: { table: "kubunTatemono", row: 1, col: "yuka" }, label: "区分した建物 2行目の床面積", task: 1, pts: 2 },
+      { cell: { table: "kubunTatemono", row: 2, col: "yuka" }, label: "区分した建物 3行目の床面積", task: 2, pts: 2 },
+    ],
     build(rng) {
       const corp = wgPick(rng, ["株式会社", "有限会社"]) + wgPerson(rng);
       const shiho = wgPerson(rng);
@@ -3823,6 +4119,9 @@ const WRITTEN = [
       const yoto = wgPick(rng, ["店舗", "事務所", "診療所"]);
 
       return {
+        shiho: shiho,
+        shozai: shozai,
+        date: date,
         statement:
           `<p><b>【事案】</b> ${corp}は、${shozai}<b>${chiban.text}</b>の土地（所有権・更地）の上に<b>${st.text}</b>の建物を新築した。` +
           `専有部分は<b>3戸</b>で、いずれも構造上・利用上の独立性を備える。</p>` +

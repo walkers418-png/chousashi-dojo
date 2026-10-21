@@ -702,6 +702,30 @@ math.mx {
   border-bottom: 1px solid var(--border);
   height: 22px;
 }
+/* 記述式の答案用紙: 項目名の右に入力欄を並べる（印刷された枠に書き込む見た目） */
+.af-field-in {
+  align-items: flex-start;
+}
+.af-field-in .af-label {
+  flex: 0 0 5.5em;
+  padding-top: 8px;
+  letter-spacing: 0.05em;
+}
+.af-inputs {
+  flex: 1;
+  min-width: 0;
+}
+input.af-in {
+  width: 100%;
+  margin-top: 0;
+  margin-bottom: 4px;
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+table.af-table input.af-in {
+  margin: 0;
+  min-width: 5.5em;
+}
 .af-note {
   font-size: 13px;
   margin: 12px 0;

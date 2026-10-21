@@ -301,6 +301,272 @@ function wgGeoOffset(rng) {
   };
 }
 
+
+// ─────────── 事実関係の文章部品（問題文の長文化） ───────────
+// 本試験の〔事実関係〕は8〜12項目・600〜800字ほどあり、計算に使う情報のほかに、
+// 取得の経緯・現況・立会い・測量の経過といった「読んで拾う」情報が混ざる。
+// 部品は生成済みの値（所有者・所在・地目・日付）からだけ文を作る。数値を直書きすると
+// 座標や地積と食い違うため、答えに効く数値は一切ここでは作らない。
+// 地目と食い違う現況（山林を駐車場とする等）は地目変更の論点を勝手に生むので出さない。
+const WG_LAND_USE = {
+  宅地: "居宅の敷地として利用されている",
+  田: "水田として耕作されている",
+  畑: "野菜畑として耕作されている",
+  山林: "杉が植栽された山林として管理されている",
+  原野: "雑草が生い茂り、特に利用されていない",
+  雑種地: "月極駐車場として利用されている",
+  牧場: "放牧地として利用されている",
+  池沼: "ため池として水をたたえている",
+};
+
+// d の days 日後の令和日付。月末・年末の繰り上がりは Date に任せる。
+function wgDateAfter(d, days) {
+  const t = new Date(2018 + d.y, d.m - 1, d.d + days);
+  const y = t.getFullYear() - 2018;
+  return {
+    y: y,
+    m: t.getMonth() + 1,
+    d: t.getDate(),
+    text: `令和${y}年${t.getMonth() + 1}月${t.getDate()}日`,
+  };
+}
+
+// 取得の経緯。売買・相続・贈与から選ぶ。登記名義人が変わった日付は依頼日より前に置く。
+function wgAcquireFact(rng, owner, date, landName) {
+  const when = wgDateAfter(date, -wgInt(rng, 400, 1800)).text;
+  const other = wgPerson(rng);
+  const kind = wgInt(rng, 0, 2);
+  if (kind === 0)
+    return `${owner}は、${when}に${other}から${landName}を買い受け、同日、所有権の移転の登記を了している。`;
+  if (kind === 1)
+    return `${owner}は、${other}の死亡により、${when}に${landName}を相続し、相続による所有権の移転の登記を了している。`;
+  return `${owner}は、${when}に${other}から${landName}の贈与を受け、所有権の移転の登記を了している。`;
+}
+
+// 土地の事実関係を、番号を振る前の文の配列で返す。
+// o: { owner, shozai, chimoku, date, geo, landName, noUse }
+// 必ず入る4項目（取得・現況・立会い・測量日）に、任意の2〜3項目を足す。
+function wgLandFacts(rng, o) {
+  const land = o.landName || "甲土地";
+  const must = [wgAcquireFact(rng, o.owner, o.date, land)];
+  if (!o.noUse && WG_LAND_USE[o.chimoku])
+    must.push(`${land}は、現在、${WG_LAND_USE[o.chimoku]}。`);
+  const north = wgPerson(rng);
+  const south = wgPerson(rng);
+  must.push(
+    `北側の隣地の所有者は${north}、南側の隣地の所有者は${south}であり、両名とも現地の立会いに応じ、` +
+      `${land}との筆界の位置について異議を述べなかった。`,
+  );
+  must.push(
+    `測量は${wgDateAfter(o.date, wgInt(rng, 3, 20)).text}に実施した。` +
+      `各筆界点には、いずれもコンクリート杭の境界標が設置されている。`,
+  );
+
+  const optional = [
+    `${o.owner}は、${o.shozai}に所在する${land}の登記記録上の所有権登記名義人であり、` +
+      `所有権以外の権利に関する登記はされていない。`,
+    `${land}の東側は、幅員${wgPick(rng, [4, 5, 6])}メートルの公道に接している。`,
+    `${land}の西側の隣地は、${wgPerson(rng)}が所有する土地であり、筆界について争いはない。`,
+    `${o.owner}は、測量及び登記の申請に要する費用を自ら負担することとしている。`,
+  ];
+  if (o.geo)
+    optional.push(
+      `測量は、近傍の電子基準点に基づく世界測地系（平面直角座標系第${wgInt(rng, 1, 19)}系）によって行った。`,
+    );
+  // 任意項目はシードから2〜3個を選ぶ（順序もシャッフルされる）
+  const extra = [];
+  const want = wgInt(rng, 2, 3);
+  while (extra.length < want && optional.length)
+    extra.push(optional.splice(wgInt(rng, 0, optional.length - 1), 1)[0]);
+  // 取得 → 現況 → 任意 → 立会い → 測量日 の順に並べると、時系列として自然に読める
+  return [must[0]].concat(must.slice(1, -2), extra, must.slice(-2));
+}
+
+// 末尾の（注）。距離・座標の扱いと、法律上の前提を本試験と同じ言い回しで置く。
+function wgNoteBlock() {
+  const items = [
+    "本問における行為は全て適法に行われており、法律上必要な書類は全て適法に作成されているものとする。",
+    "距離の単位はメートルである。",
+    "登記の申請は、書面申請の方法によってするものとする。",
+  ];
+  return (
+    `<p class="small" style="margin-top:10px">（注）</p>` +
+    items
+      .map((t, i) => `<p class="small">${i + 1}　${t}</p>`)
+      .join("")
+  );
+}
+
+
+// ─────────── 土地以外・合筆・更正の事実関係（補足） ───────────
+// 建物・区分建物・合筆・地積更正のテンプレートは、事案の文と図表だけで短い。
+// ここでは答えに効かない事実（施工者・登記記録の確認・現地調査・費用負担など）を足して、
+// 本試験のように「必要な情報を読んで拾う」長さにする。答えに効く事実は各テンプレートが持つ。
+// 値（所有者・日付・地目）はテンプレートが返したものだけを使い、食い違いを作らない。
+const WG_BUILDER = [
+  "青葉建設株式会社",
+  "ひので工務店",
+  "有限会社みなと建設",
+  "株式会社あけぼのホーム",
+  "桜台工業株式会社",
+];
+const WG_DEMOLISHER = [
+  "丸石解体工業株式会社",
+  "有限会社西風解体",
+  "株式会社クリーンワークス",
+];
+
+function wgWideNo(k) {
+  return String(k).replace(/\d/g, (c) => "０１２３４５６７８９"[c]);
+}
+
+// 補足の事実を、番号を振る前の文の配列で返す。作れない種類なら空配列。
+function wgSupplementFacts(tpl, b, rng) {
+  const id = tpl.id;
+  const owner = b.owner;
+  const shiho = b.shiho;
+  const hasDate = b.date && b.date.y;
+  const survey = hasDate
+    ? `土地家屋調査士${shiho}は、${wgDateAfter(b.date, wgInt(rng, 3, 20)).text}に現地を調査した。`
+    : null;
+  const pickN = (arr, n) => {
+    const pool = arr.slice();
+    const out = [];
+    while (out.length < n && pool.length)
+      out.push(pool.splice(wgInt(rng, 0, pool.length - 1), 1)[0]);
+    return out;
+  };
+  const baseDate = hasDate ? b.date : wgDate(rng);
+  const items = [];
+
+  // 座標つきの土地（地積更正）は分筆と同じ部品を使う
+  if (id === "W02" || id === "W11") {
+    return wgLandFacts(rng, {
+      owner: owner,
+      shozai: b.shozai,
+      chimoku: b.chimoku,
+      date: baseDate,
+      geo: id === "W11",
+      landName: id === "W02" ? "乙土地" : "丙土地",
+    });
+  }
+  if (id === "W17") {
+    return wgLandFacts(rng, {
+      owner: owner,
+      shozai: b.shozai,
+      chimoku: b.chimoku,
+      date: baseDate,
+      geo: false,
+      landName: "甲土地",
+    });
+  }
+
+  // 合筆（2〜3筆）
+  if (id === "W07" || id === "W19" || id === "W18") {
+    items.push(wgAcquireFact(rng, owner, baseDate, "甲土地"));
+    items.push(wgAcquireFact(rng, owner, baseDate, "乙土地"));
+    if (WG_LAND_USE[b.chimoku])
+      items.push(
+        `甲土地及び乙土地は、現在、いずれも${WG_LAND_USE[b.chimoku]}。`,
+      );
+    items.push(
+      `土地家屋調査士${shiho}は、甲土地及び乙土地の登記記録を調査し、表題部及び権利部の記録が上記のとおりであることを確認した。`,
+    );
+    items.push(
+      `土地家屋調査士${shiho}は、${owner}から、表示に関する登記の申請手続の代理及びこれに必要な調査の依頼を受けた。`,
+      `${owner}は、登記の申請に要する費用を自ら負担することとしている。`,
+    );
+    return items;
+  }
+
+  // 公有水面埋立地の土地表題登記
+  if (id === "W22") {
+    items.push(
+      `埋立工事は${wgPick(rng, WG_BUILDER)}が施工し、工事の完了後、新たに生じた土地の周囲にコンクリート杭の境界標を設置した。`,
+    );
+    if (WG_LAND_USE[b.chimoku])
+      items.push(`新たに生じた土地は、現在、${WG_LAND_USE[b.chimoku]}。`);
+    items.push(
+      `土地家屋調査士${shiho}は、新たに生じた土地の現地を調査し、境界標の位置を測量した。`,
+    );
+    items.push(
+      `${owner}は、登記の申請に要する費用を自ら負担することとしている。`,
+    );
+    return items;
+  }
+
+  // 建物・区分建物
+  const builder = wgPick(rng, WG_BUILDER);
+  const common = [];
+  if (owner && shiho)
+    common.push(
+      `土地家屋調査士${shiho}は、${owner}から、表示に関する登記の申請手続の代理及びこれに必要な調査の依頼を受けた。`,
+    );
+  if (survey) common.push(survey);
+  common.push(
+    `建物の敷地は、幅員${wgPick(rng, [4, 5, 6])}メートルの公道に接している。`,
+  );
+  if (owner)
+    common.push(`${owner}は、登記の申請に要する費用を自ら負担することとしている。`);
+  const existing = ["W06", "W09", "W12", "W20", "W14", "W24", "W26", "W28"];
+  const registry = owner
+    ? `登記記録を調査したところ、表題部に記録された事項は上記のとおりであり、権利部（甲区）の所有権の登記名義人は${owner}であった。`
+    : `登記記録を調査したところ、表題部に記録された事項は上記のとおりであった。`;
+  if (existing.indexOf(id) >= 0) items.push(registry);
+  if (id === "W03")
+    items.push(
+      `${owner}は、建築基準法に基づく確認済証及び検査済証の交付を受けており、建物は確認を受けた内容のとおりに建築されている。`,
+      `建物の敷地は${owner}が所有する土地であり、建物の所有者と敷地の所有者は同一である。`,
+      `工事は${builder}が請け負って施工した。`,
+    );
+  else if (id === "W06" || id === "W20")
+    items.push(`増築工事は${builder}が請け負って施工した。`);
+  else if (id === "W12" || id === "W28")
+    items.push(`取壊し工事は${wgPick(rng, WG_DEMOLISHER)}が行い、建築資材は全て搬出されている。`);
+  else if (id === "W21")
+    items.push(`接続部分の増築工事は${builder}が請け負って施工した。`);
+  else if (id === "W04" || id === "W10" || id === "W27" || id === "W29")
+    items.push(
+      `工事は${builder}が施工し、建築基準法に基づく検査済証の交付を受けている。`,
+      `各専有部分の出入口は、いずれも共用の廊下又は階段に面している。`,
+      `土地家屋調査士${shiho}は、現地で各専有部分の位置を確認し、壁の厚さを実測した。`,
+    );
+  else if (id === "W23")
+    items.push(
+      `甲建物、乙建物及び丙建物は、いずれも現地で壁によって接続していることを確認した。`,
+    );
+  else if (id === "W14" || id === "W24" || id === "W26")
+    items.push(
+      `土地家屋調査士${shiho}は、現地で各専有部分の位置と壁の厚さを確認した。`,
+    );
+  return items.concat(common.slice(0, 3));
+}
+
+// 事実関係の補足を問題文の末尾に足す。〔事実関係〕の番号つき項目が既にあれば続き番号にする。
+// すでに（注）まで揃っている問題（分筆系）には足さない。
+function wgLengthen(tpl, built, seed) {
+  const st = built.statement;
+  if (/（注）/.test(st)) return st;
+  const rng = wgRng((seed ^ 0x2c9277b5) >>> 0);
+  const items = wgSupplementFacts(tpl, built, rng);
+  if (!items.length) return st;
+  // 番号つきの項目が既にあれば続き番号にし、無ければ見出しから始める
+  const nums = [...st.matchAll(/<p>([０-９]+)　/g)];
+  let start = 1;
+  if (nums.length) {
+    const last = nums[nums.length - 1][1];
+    start =
+      Number(last.replace(/[０-９]/g, (c) => "０１２３４５６７８９".indexOf(c))) + 1;
+  }
+  const head = nums.length ? "" : `<p><b>〔事実関係（補足）〕</b></p>`;
+  return (
+    st +
+    head +
+    items.map((t, i) => `<p>${wgWideNo(start + i)}　${t}</p>`).join("") +
+    wgNoteBlock()
+  );
+}
+
 // ─────────── 土地: 分筆の定番形状 ───────────
 // 北側筆界AB（X=xN の直線）と南側筆界DC（X=xS の直線）で挟まれた四角形に、
 // 現地の境界標K・Lを結ぶ直線KLで分筆線PQを入れ、交点P・Qを求めさせる本試験の標準形。
@@ -780,6 +1046,72 @@ function wgArticleFillFor(rng, type) {
   return null;
 }
 
+
+// ─────────── 申請書の表セルの後付け ───────────
+// 表のセルの正答は、テンプレートが先に作った設問（tasks）の答えや既存の申請書項目と同じ値になる。
+// そこで、テンプレート側は tpl.sheet に「どの項目をどの表のどのセルに置くか」だけを宣言し、
+// 値は生成後にここで引く（同じ数値を二度計算して食い違うのを防ぐため）。
+//   { match: 正規表現, cell }          既存の申請書項目をセルに移す
+//   { matchAll: 正規表現, table, col } 該当する項目すべてを同じ列の上から順に移す
+//   { cell, label, task: 添字, fmt }   設問 tasks[添字] の答えからセルを作る
+//   { cell, label, value: fn(built) }  built から正答（文字列または配列）を返す
+//   { build: fn(built) }               申請書項目（セル）の配列を直接返す
+// cell は { table, row, col } か { table, pre }。fmt は "area"（既定）か "floors"。
+function wgAreaAccepts(v) {
+  const a = [v.toFixed(2), String(v), v.toFixed(2) + "㎡", String(v) + "㎡"];
+  return a.filter((x, i) => a.indexOf(x) === i);
+}
+
+// 複数階の床面積は「1階85.00㎡ 2階69.50㎡」の形。空白は採点側で無視される。
+function wgFloorsAccepts(areas) {
+  const out = [];
+  [(v) => v.toFixed(2), (v) => String(v)].forEach((f) =>
+    ["㎡", ""].forEach((unit) => {
+      out.push(areas.map((a, i) => `${i + 1}階${f(a)}${unit}`).join(""));
+      if (areas.length === 1) out.push(`${f(areas[0])}${unit}`);
+    }),
+  );
+  return out.filter((x, i) => out.indexOf(x) === i);
+}
+
+function wgApplySheet(tpl, built) {
+  if (!tpl.sheet) return;
+  tpl.sheet.forEach((d) => {
+    if (d.build) {
+      // built から申請書項目（表のセル）の配列を直接作る
+      d.build(built).forEach((e) => built.appForm.push(e));
+      return;
+    }
+    if (d.matchAll) {
+      // 該当する項目すべてを、表の同じ列の上から順の行に置く
+      built.appForm
+        .filter((x) => d.matchAll.test(x.label))
+        .forEach((f, r) => {
+          f.cell = { table: d.table, row: r, col: d.col };
+        });
+      return;
+    }
+    if (d.match) {
+      const f = built.appForm.find((x) => d.match.test(x.label));
+      if (f) f.cell = d.cell;
+      return;
+    }
+    let answer;
+    if (d.value) answer = d.value(built);
+    else {
+      const v = built.tasks[d.task].answer;
+      answer = d.fmt === "floors" ? wgFloorsAccepts([].concat(v)) : wgAreaAccepts(v);
+    }
+    built.appForm.push({
+      cell: d.cell,
+      label: d.label,
+      answer: Array.isArray(answer) ? answer : [answer],
+      hint: d.hint || "",
+      pts: d.pts || 2,
+    });
+  });
+}
+
 // ─────────── テンプレートから1問を組み立てる ───────────
 // written.js の WRITTEN は「メタ情報 + build(rng)」のテンプレート配列。
 // ここでシードから乱数を作り、テンプレートに具体的な問題を吐かせる。
@@ -807,6 +1139,11 @@ function buildWritten(id, seed) {
     inst,
     { seed: s },
   );
+  // 申請書の表のセル（建物の表示・敷地権の表示など）。tpl.sheet の宣言から後付けする。
+  built.appForm = built.appForm.slice();
+  wgApplySheet(tpl, built);
+  // 事案の短いテンプレートには、答えに効かない事実関係を足して本試験の長さに近づける
+  built.statement = wgLengthen(tpl, built, s);
   // 作図チェックはテンプレートが明示していなければ図面の種類から補う
   if (built.figureChecks === undefined)
     built.figureChecks = wgDefaultFigChecks(tpl.type);

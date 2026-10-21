@@ -3644,6 +3644,187 @@ function wireFigChecklist() {
   boxes.forEach((b) => b.addEventListener("change", update));
 }
 
+// ─────────── 申請書の答案用紙レイアウト ───────────
+// 本試験は印刷された申請書の枠に書き込む。appForm の各項目をその枠の位置に並べる。
+// 入力欄の id（wf{i}）は従来のままなので、採点処理は触らない。
+// 枠に載る項目は slot（明示）または label で判定し、載らないもの（申請件数・申請義務の有無など
+// 申請書の外で問う判断設問）は枠の下に別立てで出す。
+const SHEET_SLOTS = [
+  ["purpose", "登記の目的", /登記の目的/],
+  ["cause", "登記原因及びその日付", /^登記原因及びその日付/],
+  ["attach", "添付情報", /^添付情報/],
+  ["applicant", "申請人", /^申請人(の資格)?$/],
+  ["tax", "登録免許税", /^登録免許税$/],
+];
+
+// 申請書の表の定義。cols は [列キー, 見出し]。tail は「登記原因及びその日付」列を付ける表。
+const SHEET_TABLES = {
+  tochi: {
+    side: "土地の表示",
+    cols: [
+      ["chiban", "①地番"],
+      ["chimoku", "②地目"],
+      ["chiseki", "③地積（㎡）"],
+    ],
+    tail: true,
+  },
+  // 連件の申請書では1件目・2件目それぞれに土地の表示の表がある
+  tochi1: {
+    side: "土地の表示（1件目）",
+    cols: [
+      ["chiban", "①地番"],
+      ["chimoku", "②地目"],
+      ["chiseki", "③地積（㎡）"],
+    ],
+    tail: true,
+  },
+  tochi2: {
+    side: "土地の表示（2件目）",
+    cols: [
+      ["chiban", "①地番"],
+      ["chimoku", "②地目"],
+      ["chiseki", "③地積（㎡）"],
+    ],
+    tail: true,
+  },
+  tatemono: {
+    side: "建物の表示",
+    cols: [
+      ["shurui", "①種類"],
+      ["kozo", "②構造"],
+      ["yuka", "③床面積（㎡）"],
+    ],
+    tail: true,
+  },
+  ittou: {
+    side: "一棟の建物の表示",
+    cols: [
+      ["kozo", "①構造"],
+      ["yuka", "②床面積（㎡）"],
+    ],
+  },
+  kubunTochi: {
+    side: "敷地権の目的である土地の表示",
+    cols: [
+      ["fugo", "①土地の符号"],
+      ["chiban", "②所在及び地番"],
+      ["chimoku", "③地目"],
+      ["chiseki", "④地積（㎡）"],
+    ],
+  },
+  kubunTatemono: {
+    side: "区分した建物の表示",
+    cols: [
+      ["kaoku", "家屋番号"],
+      ["shurui", "①種類"],
+      ["kozo", "②構造"],
+      ["yuka", "③床面積（㎡）"],
+    ],
+  },
+  shikichi: {
+    side: "敷地権の表示",
+    cols: [
+      ["fugo", "①土地の符号"],
+      ["shurui", "②敷地権の種類"],
+      ["wariai", "③敷地権の割合"],
+    ],
+  },
+};
+
+function appFormSlotOf(f) {
+  if (f.cell) return "cell";
+  if (f.slot) return f.slot;
+  const hit = SHEET_SLOTS.find((s) => s[2].test(f.label));
+  return hit ? hit[0] : null;
+}
+
+function appFormSheetHtml(w) {
+  const input = (f, i, ph) =>
+    `<input type="text" class="af-in" id="wf${i}" autocomplete="off" placeholder="${esc(ph || "")}"><div id="wfExpl${i}"></div>`;
+  const bySlot = {};
+  const cells = [];
+  const judge = [];
+  w.appForm.forEach((f, i) => {
+    const slot = appFormSlotOf(f);
+    if (slot === "cell") cells.push({ f, i });
+    else if (slot) (bySlot[slot] = bySlot[slot] || []).push({ f, i });
+    else judge.push({ f, i });
+  });
+
+  const field = (slot, name) => {
+    const items = bySlot[slot];
+    if (!items) return "";
+    return `<div class="af-field af-field-in"><span class="af-label">${esc(name)}</span><div class="af-inputs">${items
+      .map(({ f, i }) => input(f, i, f.label !== name ? f.label : f.hint))
+      .join("")}</div></div>`;
+  };
+
+  // 表。セルは cell:{table, row, col}、表の上の単独項目（所在・家屋番号など）は cell:{table, pre}。
+  // table を省くと土地の表示表として扱う（分筆系の既存テンプレートとの互換）。
+  let tableHtml = "";
+  for (const [tid, def] of Object.entries(SHEET_TABLES)) {
+    const mine = cells.filter((c) => (c.f.cell.table || "tochi") === tid);
+    if (!mine.length) continue;
+    const pres = [];
+    mine.forEach((c) => {
+      if (c.f.cell.pre && !pres.some((p) => p.f.cell.pre === c.f.cell.pre))
+        pres.push(c);
+    });
+    const body = mine.filter((c) => c.f.cell.col);
+    const nRows = body.length
+      ? Math.max(...body.map((c) => c.f.cell.row)) + 1
+      : 0;
+    const span = def.cols.length + (def.tail ? 1 : 0);
+    const preHtml = pres
+      .map(
+        (c) =>
+          `<tr><th class="af-pre">${esc(c.f.cell.pre)}</th><td colspan="${span}">${input(c.f, c.i, "")}</td></tr>`,
+      )
+      .join("");
+    const rowsHtml = Array.from({ length: nRows }, (_, r) => {
+      const tds = def.cols
+        .map(([col]) => {
+          const c = body.find((x) => x.f.cell.row === r && x.f.cell.col === col);
+          return `<td>${c ? input(c.f, c.i, "") : ""}</td>`;
+        })
+        .join("");
+      return `<tr>${tds}${def.tail ? '<td class="muted small">原因欄は上の項目で答える</td>' : ""}</tr>`;
+    }).join("");
+    const head = def.cols.map((c) => `<th>${c[1]}</th>`).join("");
+    const tail = def.tail ? "<th>登記原因及び<br>その日付</th>" : "";
+    // 欄名が長いと縦書きが表の高さを超えるので、8文字を超えるものは見出しにする
+    const useSide = def.side.length <= 8;
+    tableHtml += `${useSide ? "" : `<p class="af-table-title"><b>${esc(def.side)}</b></p>`}<div class="af-table-wrap">${useSide ? `<div class="af-side">${esc(def.side)}</div>` : ""}<div class="table-scroll"><table class="simple af-table">
+      ${preHtml ? `<tbody>${preHtml}</tbody>` : ""}
+      ${nRows ? `<tbody><tr>${head}${tail}</tr>${rowsHtml}</tbody>` : ""}
+    </table></div></div>`;
+  }
+
+  const judgeHtml = judge.length
+    ? `<h4 style="margin:16px 0 0">判断・確認の設問</h4>
+       <p class="muted small" style="margin:2px 0 0">申請書の外で問われる点です。</p>` +
+      judge
+        .map(
+          ({ f, i }) => `
+    <label class="fld">${esc(f.label)} <span class="muted">${f.hint ? "（" + esc(f.hint) + "）" : ""}</span></label>
+    <input type="text" id="wf${i}" autocomplete="off">
+    <div id="wfExpl${i}"></div>`,
+        )
+        .join("")
+    : "";
+
+  return `<div class="af-sheet">
+      <div class="af-title">登記申請書</div>
+      ${field("purpose", "登記の目的")}
+      ${field("cause", "登記原因及びその日付")}
+      ${field("attach", "添付情報")}
+      <p class="af-note">令和　年　月　日申請　　　　法務局　　　支局</p>
+      ${field("applicant", "申請人")}
+      ${field("tax", "登録免許税")}
+      ${tableHtml}
+    </div>${judgeHtml}`;
+}
+
 // 記述式1問を表示する。問題は開くたびに buildWritten() で作り直すので、
 // 同じ id でも数値・地目・当事者が毎回変わる（opts.seed を渡せば同じ問題を再現できる）。
 // 履歴上「合格圏」とみなす得点率。択一の基準点に合わせて6割とする（弱点絞り込み用）。
@@ -3678,14 +3859,7 @@ function renderWritten(id, opts) {
     )
     .join("");
 
-  const formHtml = w.appForm
-    .map(
-      (f, i) => `
-    <label class="fld">${esc(f.label)} <span class="muted">${f.hint ? "（" + esc(f.hint) + "）" : ""}</span></label>
-    <input type="text" id="wf${i}" autocomplete="off">
-    <div id="wfExpl${i}"></div>`,
-    )
-    .join("");
+  const formHtml = appFormSheetHtml(w);
 
   // 本試験の記述式は問2で条文の穴埋めを問う。条文データがあるときだけ出す。
   const af = w.articleFill;
@@ -3726,7 +3900,7 @@ function renderWritten(id, opts) {
       ${tasksHtml}
       ${articleFieldsHtml}
       <hr class="sep">
-      <h3>登記申請書（穴埋め）</h3>
+      <h3>登記申請書（答案用紙）</h3>
       ${formHtml}
       <button class="btn" id="gradeBtn">採点する</button>
       <div id="wResult"></div>
