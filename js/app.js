@@ -3687,17 +3687,69 @@ const SHEET_TABLES = {
     ],
     tail: true,
   },
+  // 建物の申請書は表の並びが3パターン＋区分建物（https://chosa4.com/sinseisyo-base/）。
+  // pres は表の上の単独項目。採点するセルが無い欄は「採点しない入力欄」として出す。
+  // パターン1: 建物表題・滅失・表題部変更/更正
   tatemono: {
     side: "建物の表示",
+    pres: ["所在", "家屋番号"],
     cols: [
+      ["shufuku", "主である建物<br>又は附属建物"],
       ["shurui", "①種類"],
       ["kozo", "②構造"],
       ["yuka", "③床面積（㎡）"],
     ],
     tail: true,
   },
+  // パターン2: 建物の分割・合併・分棟・分割合併
+  tatemono2: {
+    side: "建物の表示",
+    pres: ["所在"],
+    cols: [
+      ["chiban", "地番"],
+      ["kaoku", "家屋<br>番号"],
+      ["shufuku", "主である建物<br>又は附属建物"],
+      ["shurui", "①種類"],
+      ["kozo", "②構造"],
+      ["yuka", "③床面積（㎡）"],
+    ],
+    tail: true,
+  },
+  // パターン3: 合体。所有権の登記が関与するときは下の2表（特定事項）も書く
+  tatemono3: {
+    side: "建物の表示",
+    pres: ["所在"],
+    cols: [
+      ["chiban", "地番"],
+      ["kaoku", "家屋<br>番号"],
+      ["shurui", "①種類"],
+      ["kozo", "②構造"],
+      ["yuka", "③床面積（㎡）"],
+    ],
+    tail: true,
+    extra: [
+      {
+        title: "１．所有権登記特定事項",
+        head: ["家屋番号", "順位事項", "受付年月日及び受付番号", "登記名義人の氏名・名称"],
+        rows: 2,
+      },
+      {
+        title: "２．存続登記特定事項",
+        head: [
+          "家屋番号",
+          "順位事項",
+          "登記の目的",
+          "受付年月日及び<br>受付番号",
+          "登記名義人の<br>氏名・名称",
+          "目的となる権利",
+        ],
+        rows: 2,
+      },
+    ],
+  },
   ittou: {
     side: "一棟の建物の表示",
+    pres: ["所在", "建物の名称"],
     cols: [
       ["kozo", "①構造"],
       ["yuka", "②床面積（㎡）"],
@@ -3715,7 +3767,10 @@ const SHEET_TABLES = {
   kubunTatemono: {
     side: "区分した建物の表示",
     cols: [
-      ["kaoku", "家屋番号"],
+      ["fudosan", "不動産<br>番号"],
+      ["kaoku", "家屋<br>番号"],
+      ["meisho", "建物の<br>名称"],
+      ["shufuku", "主である建物<br>又は附属建物"],
       ["shurui", "①種類"],
       ["kozo", "②構造"],
       ["yuka", "③床面積（㎡）"],
@@ -3761,31 +3816,42 @@ function appFormSheetHtml(w) {
 
   // 表。セルは cell:{table, row, col}、表の上の単独項目（所在・家屋番号など）は cell:{table, pre}。
   // table を省くと土地の表示表として扱う（分筆系の既存テンプレートとの互換）。
+  // 採点するセルが無い欄は、書き込めるが採点しない入力欄（id なし）にする。
   let tableHtml = "";
+  let hasFree = false;
+  const freeInput = (label) => {
+    hasFree = true;
+    return `<input type="text" class="af-in af-free" autocomplete="off" aria-label="${esc(label)}（採点なし）">`;
+  };
   for (const [tid, def] of Object.entries(SHEET_TABLES)) {
     const mine = cells.filter((c) => (c.f.cell.table || "tochi") === tid);
     if (!mine.length) continue;
-    const pres = [];
+    const gradedPres = [];
     mine.forEach((c) => {
-      if (c.f.cell.pre && !pres.some((p) => p.f.cell.pre === c.f.cell.pre))
-        pres.push(c);
+      if (c.f.cell.pre && !gradedPres.some((p) => p.f.cell.pre === c.f.cell.pre))
+        gradedPres.push(c);
+    });
+    // def.pres の順に並べ、採点する欄はそのまま、無い欄は採点しない欄にする
+    const names = (def.pres || []).slice();
+    gradedPres.forEach((c) => {
+      if (!names.includes(c.f.cell.pre)) names.push(c.f.cell.pre);
     });
     const body = mine.filter((c) => c.f.cell.col);
     const nRows = body.length
       ? Math.max(...body.map((c) => c.f.cell.row)) + 1
       : 0;
     const span = def.cols.length + (def.tail ? 1 : 0);
-    const preHtml = pres
-      .map(
-        (c) =>
-          `<tr><th class="af-pre">${esc(c.f.cell.pre)}</th><td colspan="${span}">${input(c.f, c.i, "")}</td></tr>`,
-      )
+    const preHtml = names
+      .map((name) => {
+        const c = gradedPres.find((p) => p.f.cell.pre === name);
+        return `<tr><th class="af-pre">${esc(name)}</th><td colspan="${span}">${c ? input(c.f, c.i, "") : freeInput(name)}</td></tr>`;
+      })
       .join("");
     const rowsHtml = Array.from({ length: nRows }, (_, r) => {
       const tds = def.cols
-        .map(([col]) => {
+        .map(([col, colName]) => {
           const c = body.find((x) => x.f.cell.row === r && x.f.cell.col === col);
-          return `<td>${c ? input(c.f, c.i, "") : ""}</td>`;
+          return `<td>${c ? input(c.f, c.i, "") : freeInput(colName.replace(/<br>/g, ""))}</td>`;
         })
         .join("");
       return `<tr>${tds}${def.tail ? '<td class="muted small">原因欄は上の項目で答える</td>' : ""}</tr>`;
@@ -3798,6 +3864,16 @@ function appFormSheetHtml(w) {
       ${preHtml ? `<tbody>${preHtml}</tbody>` : ""}
       ${nRows ? `<tbody><tr>${head}${tail}</tr>${rowsHtml}</tbody>` : ""}
     </table></div></div>`;
+    // 合体の特定事項など、表の下に付く採点なしの表
+    (def.extra || []).forEach((ex) => {
+      const exHead = ex.head.map((h) => `<th>${h}</th>`).join("");
+      const exBody = Array.from(
+        { length: ex.rows },
+        () =>
+          `<tr>${ex.head.map((h) => `<td>${freeInput(h.replace(/<br>/g, ""))}</td>`).join("")}</tr>`,
+      ).join("");
+      tableHtml += `<p class="af-table-title"><b>${esc(ex.title)}</b></p><div class="table-scroll"><table class="simple af-table"><tbody><tr>${exHead}</tr>${exBody}</tbody></table></div>`;
+    });
   }
 
   const judgeHtml = judge.length
@@ -3822,6 +3898,7 @@ function appFormSheetHtml(w) {
       ${field("applicant", "申請人")}
       ${field("tax", "登録免許税")}
       ${tableHtml}
+      ${hasFree ? '<p class="af-free-note muted small">薄い欄は採点されません。本番の用紙にある欄として、書く練習に使ってください。</p>' : ""}
     </div>${judgeHtml}`;
 }
 

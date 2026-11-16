@@ -771,6 +771,14 @@ table.af-table th {
 table.af-table td {
   height: 26px;
 }
+/* 採点しない欄（本番の用紙にはあるが、この問題では答えを持たない欄） */
+input.af-in.af-free {
+  opacity: 0.6;
+  border-style: dashed;
+}
+.af-free-note {
+  margin: 8px 0 0;
+}
 table.af-table th.af-pre {
   text-align: center;
   white-space: nowrap;

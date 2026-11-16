@@ -2005,12 +2005,12 @@ const WRITTEN = [
     title: "建物分割登記（附属建物を独立の建物に）",
     target: "目標30分",
     sheet: [
-      { cell: { table: "tatemono", row: 0, col: "shurui" }, label: "分割後の主たる建物の種類", pts: 1, value: (b) => [b.shuName] },
-      { cell: { table: "tatemono", row: 0, col: "kozo" }, label: "分割後の主たる建物の構造", pts: 1, value: (b) => [b.stText] },
-      { cell: { table: "tatemono", row: 0, col: "yuka" }, label: "分割後の主たる建物の床面積", pts: 2, task: 0 },
-      { cell: { table: "tatemono", row: 1, col: "shurui" }, label: "分割で独立する建物の種類", pts: 1, value: (b) => [b.fuName] },
-      { cell: { table: "tatemono", row: 1, col: "kozo" }, label: "分割で独立する建物の構造", pts: 1, value: (b) => [b.stText] },
-      { cell: { table: "tatemono", row: 1, col: "yuka" }, label: "分割で独立する建物の床面積", pts: 2, task: 1 },
+      { cell: { table: "tatemono2", row: 0, col: "shurui" }, label: "分割後の主たる建物の種類", pts: 1, value: (b) => [b.shuName] },
+      { cell: { table: "tatemono2", row: 0, col: "kozo" }, label: "分割後の主たる建物の構造", pts: 1, value: (b) => [b.stText] },
+      { cell: { table: "tatemono2", row: 0, col: "yuka" }, label: "分割後の主たる建物の床面積", pts: 2, task: 0 },
+      { cell: { table: "tatemono2", row: 1, col: "shurui" }, label: "分割で独立する建物の種類", pts: 1, value: (b) => [b.fuName] },
+      { cell: { table: "tatemono2", row: 1, col: "kozo" }, label: "分割で独立する建物の構造", pts: 1, value: (b) => [b.stText] },
+      { cell: { table: "tatemono2", row: 1, col: "yuka" }, label: "分割で独立する建物の床面積", pts: 2, task: 1 },
     ],
     build(rng) {
       const owner = wgPerson(rng);
@@ -2228,7 +2228,7 @@ const WRITTEN = [
     target: "目標45分",
     combo: ["表題部変更", "分割"],
     sheet: [
-      { cell: { table: "tatemono", row: 0, col: "yuka" }, label: "床面積（増築後の主たる建物）", pts: 3, value: (b) => wgAreaAccepts(b.maNew) },
+      { cell: { table: "tatemono2", row: 0, col: "yuka" }, label: "床面積（増築後の主たる建物）", pts: 3, value: (b) => wgAreaAccepts(b.maNew) },
     ],
     build(rng) {
       const owner = wgPerson(rng);
@@ -2927,10 +2927,10 @@ const WRITTEN = [
     title: "建物合併登記（56条の合併制限で合併できない建物を見抜く）",
     target: "目標40分",
     sheet: [
-      { cell: { table: "tatemono", row: 0, col: "kozo" }, label: "合併後の主である建物（甲）の構造", pts: 1, value: (b) => [b.stText] },
-      { cell: { table: "tatemono", row: 0, col: "yuka" }, label: "合併後の主である建物（甲）の床面積", pts: 2, value: (b) => wgAreaAccepts(+(b.tasks[1].answer - b.tasks[0].answer).toFixed(2)) },
-      { cell: { table: "tatemono", row: 1, col: "kozo" }, label: "合併後の附属建物（乙）の構造", pts: 1, value: (b) => [b.stText] },
-      { cell: { table: "tatemono", row: 1, col: "yuka" }, label: "合併後の附属建物（乙）の床面積", pts: 2, task: 0 },
+      { cell: { table: "tatemono2", row: 0, col: "kozo" }, label: "合併後の主である建物（甲）の構造", pts: 1, value: (b) => [b.stText] },
+      { cell: { table: "tatemono2", row: 0, col: "yuka" }, label: "合併後の主である建物（甲）の床面積", pts: 2, value: (b) => wgAreaAccepts(+(b.tasks[1].answer - b.tasks[0].answer).toFixed(2)) },
+      { cell: { table: "tatemono2", row: 1, col: "kozo" }, label: "合併後の附属建物（乙）の構造", pts: 1, value: (b) => [b.stText] },
+      { cell: { table: "tatemono2", row: 1, col: "yuka" }, label: "合併後の附属建物（乙）の床面積", pts: 2, task: 0 },
     ],
     build(rng) {
       const owner = wgPerson(rng);
@@ -3297,9 +3297,9 @@ const WRITTEN = [
     target: "目標50分",
     combo: ["合体", "所有権保存"],
     sheet: [
-      { cell: { table: "tatemono", pre: "所在" }, label: "所在", pts: 1, value: (b) => [b.shozai + b.chiban.text] },
-      { cell: { table: "tatemono", row: 0, col: "kozo" }, label: "構造（合体後）", pts: 2, value: (b) => [b.stText] },
-      { cell: { table: "tatemono", row: 0, col: "yuka" }, label: "床面積（合体後）", pts: 3, value: (b) => wgAreaAccepts(b.areaTotal) },
+      { cell: { table: "tatemono3", pre: "所在" }, label: "所在", pts: 1, value: (b) => [b.shozai + b.chiban.text] },
+      { cell: { table: "tatemono3", row: 0, col: "kozo" }, label: "構造（合体後）", pts: 2, value: (b) => [b.stText] },
+      { cell: { table: "tatemono3", row: 0, col: "yuka" }, label: "床面積（合体後）", pts: 3, value: (b) => wgAreaAccepts(b.areaTotal) },
     ],
     build(rng) {
       const ownerA = wgPerson(rng);
@@ -3941,7 +3941,7 @@ const WRITTEN = [
     target: "目標40分",
     combo: ["滅失", "表題部変更"],
     sheet: [
-      { cell: { table: "tatemono", row: 0, col: "yuka" }, label: "床面積（区分建物でない建物となった後）", pts: 3, value: (b) => wgAreaAccepts(b.tasks[2].answer) },
+      { cell: { table: "kubunTatemono", row: 0, col: "yuka" }, label: "床面積（区分建物でない建物となった後）", pts: 3, value: (b) => wgAreaAccepts(b.tasks[2].answer) },
     ],
     build(rng) {
       const owner = wgPerson(rng);
