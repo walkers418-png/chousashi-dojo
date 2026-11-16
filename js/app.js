@@ -3661,6 +3661,7 @@ const SHEET_SLOTS = [
 const SHEET_TABLES = {
   tochi: {
     side: "土地の表示",
+    pres: ["所在"],
     cols: [
       ["chiban", "①地番"],
       ["chimoku", "②地目"],
@@ -3671,6 +3672,7 @@ const SHEET_TABLES = {
   // 連件の申請書では1件目・2件目それぞれに土地の表示の表がある
   tochi1: {
     side: "土地の表示（1件目）",
+    pres: ["所在"],
     cols: [
       ["chiban", "①地番"],
       ["chimoku", "②地目"],
@@ -3680,6 +3682,7 @@ const SHEET_TABLES = {
   },
   tochi2: {
     side: "土地の表示（2件目）",
+    pres: ["所在"],
     cols: [
       ["chiban", "①地番"],
       ["chimoku", "②地目"],
