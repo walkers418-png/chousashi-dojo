@@ -1,5 +1,5 @@
 // オフライン対応 Service Worker
-const CACHE = "chousashi-dojo-v115";
+const CACHE = "chousashi-dojo-v124";
 const ASSETS = [
   "./",
   "./index.html",

@@ -3466,6 +3466,7 @@ const WRITTEN_FILTERS = [
   ["基礎", "基礎"],
   ["標準", "標準"],
   ["応用", "応用"],
+  ["本試験", "本試験形式"],
 ];
 function writtenFilter() {
   const v = localStorage.getItem("writtenFilter");
@@ -3669,6 +3670,18 @@ const SHEET_TABLES = {
     ],
     tail: true,
   },
+  // 地目変更と合筆を一の申請情報でする申請書など、行ごとに登記原因が違う土地の表示（原因欄に入力できる）
+  tochiG: {
+    side: "土地の表示",
+    pres: ["所在"],
+    cols: [
+      ["chiban", "①地番"],
+      ["chimoku", "②地目"],
+      ["chiseki", "③地積（㎡）"],
+    ],
+    tail: true,
+    genCol: true,
+  },
   // 連件の申請書では1件目・2件目それぞれに土地の表示の表がある
   tochi1: {
     side: "土地の表示（1件目）",
@@ -3703,6 +3716,31 @@ const SHEET_TABLES = {
       ["yuka", "③床面積（㎡）"],
     ],
     tail: true,
+  },
+  // 申請書が2通ある本試験形式（令和7年度型の建物）用。パターン1の並びで、行ごとに原因欄へ書く。
+  tatemonoA: {
+    side: "建物の表示（第1欄）",
+    pres: ["所在", "家屋番号"],
+    cols: [
+      ["shufuku", "主である建物<br>又は附属建物"],
+      ["shurui", "①種類"],
+      ["kozo", "②構造"],
+      ["yuka", "③床面積（㎡）"],
+    ],
+    tail: true,
+    genCol: true,
+  },
+  tatemonoB: {
+    side: "建物の表示（第2欄）",
+    pres: ["所在", "家屋番号"],
+    cols: [
+      ["shufuku", "主である建物<br>又は附属建物"],
+      ["shurui", "①種類"],
+      ["kozo", "②構造"],
+      ["yuka", "③床面積（㎡）"],
+    ],
+    tail: true,
+    genCol: true,
   },
   // パターン2: 建物の分割・合併・分棟・分割合併
   tatemono2: {
@@ -3796,13 +3834,15 @@ function appFormSlotOf(f) {
   return hit ? hit[0] : null;
 }
 
-function appFormSheetHtml(w) {
+function appFormSheetHtml(w, group) {
+  group = group || 0;
   const input = (f, i, ph) =>
     `<input type="text" class="af-in" id="wf${i}" autocomplete="off" placeholder="${esc(ph || "")}"><div id="wfExpl${i}"></div>`;
   const bySlot = {};
   const cells = [];
   const judge = [];
   w.appForm.forEach((f, i) => {
+    if ((f.sheetNo || 0) !== group) return;
     const slot = appFormSlotOf(f);
     if (slot === "cell") cells.push({ f, i });
     else if (slot) (bySlot[slot] = bySlot[slot] || []).push({ f, i });
@@ -3857,7 +3897,14 @@ function appFormSheetHtml(w) {
           return `<td>${c ? input(c.f, c.i, "") : freeInput(colName.replace(/<br>/g, ""))}</td>`;
         })
         .join("");
-      return `<tr>${tds}${def.tail ? '<td class="muted small">原因欄は上の項目で答える</td>' : ""}</tr>`;
+      // genCol の表は、行ごとに登記原因が違う申請書（取壊し・新築が同じ表に並ぶ等）なので原因欄に書く
+      const gen = def.genCol ? body.find((x) => x.f.cell.row === r && x.f.cell.col === "gen") : null;
+      const tailTd = !def.tail
+        ? ""
+        : def.genCol
+          ? `<td>${gen ? input(gen.f, gen.i, "") : freeInput("登記原因及びその日付")}</td>`
+          : '<td class="muted small">原因欄は上の項目で答える</td>';
+      return `<tr>${tds}${tailTd}</tr>`;
     }).join("");
     const head = def.cols.map((c) => `<th>${c[1]}</th>`).join("");
     const tail = def.tail ? "<th>登記原因及び<br>その日付</th>" : "";
@@ -3892,6 +3939,7 @@ function appFormSheetHtml(w) {
         .join("")
     : "";
 
+  if (!cells.length && !Object.keys(bySlot).length) return judgeHtml;
   return `<div class="af-sheet">
       <div class="af-title">登記申請書</div>
       ${field("purpose", "登記の目的")}
@@ -3903,6 +3951,19 @@ function appFormSheetHtml(w) {
       ${tableHtml}
       ${hasFree ? '<p class="af-free-note muted small">薄い欄は採点されません。本番の用紙にある欄として、書く練習に使ってください。</p>' : ""}
     </div>${judgeHtml}`;
+}
+
+// 申請書が2通以上ある問題（本試験の第1欄・第2欄）は、項目の sheetNo で分け、w.sheetTitles の見出しを付けて並べる。
+function appFormSheetsHtml(w) {
+  const groups = [...new Set(w.appForm.map((f) => f.sheetNo || 0))].sort((a, b) => a - b);
+  if (groups.length <= 1) return appFormSheetHtml(w, groups[0] || 0);
+  return groups
+    .map(
+      (g) =>
+        `<h4 style="margin:16px 0 4px">${esc((w.sheetTitles || {})[g] || "第" + g + "欄")}</h4>` +
+        appFormSheetHtml(w, g),
+    )
+    .join("");
 }
 
 // 記述式1問を表示する。問題は開くたびに buildWritten() で作り直すので、
@@ -3929,7 +3990,7 @@ function renderWritten(id, opts) {
     .map(
       (t, i) => `
     <div style="margin-top:14px">
-      <b>問${i + 1}</b> ${esc(t.q)}
+      <b>${esc(t.label || "問" + (i + 1))}</b> ${esc(t.q)}
       <div style="display:flex;gap:8px;align-items:center">
         ${numInputHtml(`wt${i}`, "flex:1")}
         <span class="muted">${esc(t.unit || "")}</span>
@@ -3939,7 +4000,7 @@ function renderWritten(id, opts) {
     )
     .join("");
 
-  const formHtml = appFormSheetHtml(w);
+  const formHtml = appFormSheetsHtml(w);
 
   // 本試験の記述式は問2で条文の穴埋めを問う。条文データがあるときだけ出す。
   const af = w.articleFill;
